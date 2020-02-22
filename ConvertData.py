@@ -47,20 +47,23 @@ triggerinfo = TriggerInfoTable.row
 WaveformTable = h5file.create_table("/", "Waveform", WaveformData, "Waveform")
 waveform = WaveformTable.row
 
-for i in range(nWave) :
-    waveform['EventID'] = EventID_2[i]
-    waveform['ChannelID'] = ChannelID[i]
-    waveform['Waveform'] = Waveform[i]
-    waveform.append()
+Concatenate = np.vectorize(lambda a,b,c : [a,b,c],signature="(),(),(n)->()")
 
+print(time()-start)
+mid = time()
+WaveformWrite = list(map(tuple,list(Concatenate(EventID_2,ChannelID,Waveform))))
+TriggerInfoWrite = list(map(tuple,list(np.vstack((EventID,Sec,NanoSec)).T)))
+print(time()-mid)
+mid = time()
+WaveformTable.append(WaveformWrite)
+TriggerInfoTable.append(TriggerInfoWrite)
+print(time()-mid)
+mid = time()
 WaveformTable.flush()
-    
-for i in range(len(EventID)) :
-    triggerinfo['EventID'] = EventID[i]
-    triggerinfo['Sec'] = Sec[i]
-    triggerinfo['NanoSec'] = NanoSec[i]
-    triggerinfo.append()
 TriggerInfoTable.flush()
+print(time()-mid)
+mid = time()
+
 h5file.close()
 
 print(time()-start)
