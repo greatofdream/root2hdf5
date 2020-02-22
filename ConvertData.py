@@ -6,8 +6,6 @@ import tables
 import numpy as np
 from time import time
 
-from IPython import embed
-
 Len = np.vectorize(len)
 
 if len(sys.argv)!=3 : print("Usage: python3 ConvertData.py inputfile outputfile")
@@ -47,8 +45,6 @@ triggerinfo = TriggerInfoTable.row
 WaveformTable = h5file.create_table("/", "Waveform", WaveformData, "Waveform")
 waveform = WaveformTable.row
 
-print(time()-start)
-mid=time()
 
 for i in range(nWave) :
     waveform['EventID'] = EventID_2[i]
@@ -62,13 +58,9 @@ for i in range(len(EventID)) :
     triggerinfo['NanoSec'] = NanoSec[i]
     triggerinfo.append()
 
-print(time()-mid)
-mid=time()
 
 WaveformTable.flush()
 TriggerInfoTable.flush()
-print(time()-mid)
-mid=time()
 h5file.close()
 
 print(time()-start)
