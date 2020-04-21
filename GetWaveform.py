@@ -4,7 +4,8 @@ import os,re,sys
 import uproot
 import numpy as np
 
-JPDataDir = os.environ['JPDataDir']
+#JPDataDir = os.environ['JPDataDir']
+JPDataDir = "/mnt/neutrino/01_RawData"
 date_search = re.compile(r"Jinping_1ton_Phy_(\d{8,8})_(\d{8,8})(_\d+)?.root")
 
 def GetRunDate(runNo) :
@@ -31,6 +32,6 @@ def GetWaveform(runNo,FileNo,TriggerNo,ChannelId) :
     WindowSize = int(len(Waveform)/len(ChannelID))
     Waveform=Waveform.reshape(len(ChannelID),WindowSize)
     instance = list(ChannelID).index(ChannelId)
-    return Waveform[instance]
+    return np.array(Waveform[instance],dtype=np.int16)
 
 
