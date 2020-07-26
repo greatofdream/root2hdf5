@@ -12,6 +12,7 @@ opt = args.opt
 
 from time import time
 start = time()
+global_start = time()
 
 import uproot
 import tables
@@ -44,25 +45,18 @@ class GroundTruthData(tables.IsDescription):
 
 
 h5file = tables.open_file(opt, mode="w", title="OneTonDetector", filters=tables.Filters(complevel=9))
-TriggerInfoTable = h5file.create_table("/", "TriggerInfo", TriggerInfoData, "Trigger info")
-triggerinfo = TriggerInfoTable.row
+#TriggerInfoTable = h5file.create_table("/", "TriggerInfo", TriggerInfoData, "Trigger info")
+#triggerinfo = TriggerInfoTable.row
 WaveformTable = h5file.create_table("/", "Waveform", WaveformData, "Waveform")
 waveform = WaveformTable.row
 GroundTruthTable = h5file.create_table("/", "GroundTruth", GroundTruthData, "GroundTruth")
 groundtruth = GroundTruthTable.row
 
 
-def Loop_File(fip) :
+def ReadFile(fip) :
     EventID = fip["Readout"]["TriggerNo"].array().astype(np.int64)
-    Sec = fip["Readout"]["Sec"].array().astype(np.int32)
-    NanoSec = fip["Readout"]["NanoSec"].array().astype(np.int32)
-
-    nphotons = fip["SimTriggerInfo"]["PEList"].array()
-    EventID3 = EventID.repeat(nphotons)
-    ChannelID3 = fip["SimTriggerInfo"]["PEList.PMTId"].array(flatten=True)
-    HitPos = fip["SimTriggerInfo"]["PEList.HitPosInWindow"].array(flatten=True)
-    Charge = fip["SimTriggerInfo"]["PEList.Charge"].array(flatten=True)
-    # TruthFrame = pd.DataFrame({"EventID":EventID3,"ChannelID":ChannelID3,"HitTime":HitTime,"PulseTime":PulseTime,"HitPos":HitPos})
+    # Sec = fip["Readout"]["Sec"].array().astype(np.int32)
+    # NanoSec = fip["Readout"]["NanoSec"].array().astype(np.int32)
 
     Waveform = fip["Readout"]["Waveform"].array(flatten=True).astype(np.int16)
     ChannelID = fip["Readout"]["ChannelId"].array()
@@ -74,42 +68,56 @@ def Loop_File(fip) :
     Waveform = Waveform.reshape(nWave, WindowSize)
     # WaveFrame = pd.DataFrame({"EventID":EventID2,"ChannelID":ChannelID2,"Waveform":list(Waveform)}):
 
-    for i in range(nWave) :
-        waveform['EventID'] = EventID2[i]
-        waveform['ChannelID'] = ChannelID2[i]
-        waveform['Waveform'] = Waveform[i]
-        waveform.append()
-
-    for i in range(len(EventID)) :
-        triggerinfo['EventID'] = EventID[i]
-        triggerinfo['Sec'] = Sec[i]
-        triggerinfo['NanoSec'] = NanoSec[i]
-        triggerinfo.append()
-
-    for i in range(len(HitPos)) :
-        groundtruth["EventID"] = EventID3[i]
-        groundtruth["ChannelID"] = ChannelID3[i]
-        groundtruth["RiseTime"] = HitPos[i]
-        groundtruth["Charge"] = Charge[i]
-        groundtruth.append()
-
-    TriggerInfoTable.flush()
-    WaveformTable.flush()
-    GroundTruthTable.flush()
+    EventID = fip["SimTriggerInfo"]["TriggerNo"].array().astype(np.int64)
+    nphotons = fip["SimTriggerInfo"]["PEList"].array(entrystop=len(EventID))
+    EventID3 = EventID.repeat(nphotons)
+    ChannelID3 = fip["SimTriggerInfo"]["PEList.PMTId"].array(flatten=True, entrystop=len(EventID))
+    HitPos = fip["SimTriggerInfo"]["PEList.HitPosInWindow"].array(flatten=True, entrystop=len(EventID))
+    Charge = fip["SimTriggerInfo"]["PEList.Charge"].array(flatten=True, entrystop=len(EventID))
+    # TruthFrame = pd.DataFrame({"EventID":EventID3,"ChannelID":ChannelID3,"HitTime":HitTime,"PulseTime":PulseTime,"HitPos":HitPos})
+    return {"EventID3": EventID3, "ChannelID3": ChannelID3, "Charge": Charge, "HitPos": HitPos, "EventID2": EventID2, "ChannelID2": ChannelID2, "Waveform": Waveform}
 
 
-print("Initialized, consuming {:.2f}s.".format(time() - start))
-start = time()
-print("Processing file {}".format(0))
-Loop_File(fip)
+file_handles = [fip]
 for fileNo in range(1, maxfiles) :
-    filename = file_prefix + "{}.root".format(fileNo)
+    filename = file_prefix + "_{}.root".format(fileNo)
     try : fip = uproot.open(filename)
     except FileNotFoundError :
-        print("only {} files found, reading terminiated.".format(fileNo))
+        print("only {} files found.".format(fileNo))
         break
-    print("Processing file {}".format(fileNo))
-    Loop_File(fileNo, fip)
+    file_handles.append(fip)
+print("Initialized, consuming {:.2f}s.".format(time() - start))
+
+start = time()
+Results = [ReadFile(fip) for fip in file_handles]
+keys = Results[-1].keys()
+Result = {key: np.concatenate([result[key] for result in Results]) for key in keys}
+print("root file read, consuming {:.2f}s.".format(time() - start))
+
+start = time()
+for i in range(len(Result["Waveform"])) :
+    waveform['EventID'] = Result["EventID2"][i]
+    waveform['ChannelID'] = Result["ChannelID2"][i]
+    waveform['Waveform'] = Result["Waveform"][i]
+    waveform.append()
+
+# for i in range(len(Result["EventID"])) :
+#    triggerinfo['EventID'] = Result["EventID"][i]
+#    triggerinfo['Sec'] = Result["Sec"][i]
+#    triggerinfo['NanoSec'] = Result["NanoSec"][i]
+#    triggerinfo.append()
+
+for i in range(len(Result["HitPos"])) :
+    groundtruth["EventID"] = Result["EventID3"][i]
+    groundtruth["ChannelID"] = Result["ChannelID3"][i]
+    groundtruth["RiseTime"] = Result["HitPos"][i]
+    groundtruth["Charge"] = Result["Charge"][i]
+    groundtruth.append()
+
+# TriggerInfoTable.flush()
+WaveformTable.flush()
+GroundTruthTable.flush()
+print("h5 file wrote, consuming {:.2f}s.".format(time() - start))
 
 h5file.close()
-print("Finished, consuming {:.2f}s.".format(time() - start))
+print("Finished, consuming {:.2f}s.".format(time() - global_start))
