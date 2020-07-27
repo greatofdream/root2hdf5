@@ -15,7 +15,8 @@ start = time()
 global_start = time()
 
 import uproot
-import tables
+import h5py
+import multiprocessing
 import numpy as np
 
 Len = np.vectorize(len)
@@ -24,33 +25,7 @@ filename = file_prefix + ".root"
 fip = uproot.open(filename)
 WindowSize = int(len(fip["Readout"]["Waveform"].array(entrystart=0, entrystop=1)[0]) / len(fip["Readout"]["ChannelId"].array(entrystart=0, entrystop=1)[0]))
 
-
-class WaveformData(tables.IsDescription):
-    EventID = tables.Int64Col(pos=0)
-    ChannelID = tables.Int16Col(pos=1)
-    Waveform = tables.Col.from_type('int16', shape=WindowSize, pos=2)
-
-
-class TriggerInfoData(tables.IsDescription):
-    EventID = tables.Int64Col(pos=0)
-    Sec = tables.Int32Col(pos=1)
-    NanoSec = tables.Int32Col(pos=2)
-
-
-class GroundTruthData(tables.IsDescription):
-    EventID = tables.Int64Col(pos=0)
-    ChannelID = tables.Int16Col(pos=1)
-    RiseTime = tables.Int16Col(pos=2)
-    Charge = tables.Float64Col(pos=3)
-
-
-h5file = tables.open_file(opt, mode="w", title="OneTonDetector", filters=tables.Filters(complevel=9))
-#TriggerInfoTable = h5file.create_table("/", "TriggerInfo", TriggerInfoData, "Trigger info")
-#triggerinfo = TriggerInfoTable.row
-WaveformTable = h5file.create_table("/", "Waveform", WaveformData, "Waveform")
-waveform = WaveformTable.row
-GroundTruthTable = h5file.create_table("/", "GroundTruth", GroundTruthData, "GroundTruth")
-groundtruth = GroundTruthTable.row
+h5file = h5py.File(opt, 'w')
 
 
 def ReadFile(fip) :
@@ -94,30 +69,43 @@ keys = Results[-1].keys()
 Result = {key: np.concatenate([result[key] for result in Results]) for key in keys}
 print("root file read, consuming {:.2f}s.".format(time() - start))
 
+waveform_dtype = [("EventID", np.int64), ("ChannelID", np.int16), ("Waveform", np.int16, 1029)]
+truth_dtype = [("EventID", np.int64), ("ChannelID", np.int16), ("RiseTime", np.int16), ("Charge", np.double)]
 start = time()
-for i in range(len(Result["Waveform"])) :
-    waveform['EventID'] = Result["EventID2"][i]
-    waveform['ChannelID'] = Result["ChannelID2"][i]
-    waveform['Waveform'] = Result["Waveform"][i]
-    waveform.append()
+WaveformTable = np.empty(len(Result["Waveform"]), dtype=waveform_dtype)
+WaveformTable["EventID"] = Result["EventID2"]
+WaveformTable["ChannelID"] = Result["ChannelID2"]
+WaveformTable["Waveform"] = Result["Waveform"]
 
-# for i in range(len(Result["EventID"])) :
-#    triggerinfo['EventID'] = Result["EventID"][i]
-#    triggerinfo['Sec'] = Result["Sec"][i]
-#    triggerinfo['NanoSec'] = Result["NanoSec"][i]
-#    triggerinfo.append()
+GroundTruthTable = np.empty(len(Result["HitPos"]), dtype=truth_dtype)
+GroundTruthTable["EventID"] = Result["EventID3"]
+GroundTruthTable["ChannelID"] = Result["ChannelID3"]
+GroundTruthTable["RiseTime"] = Result["HitPos"]
+GroundTruthTable["Charge"] = Result["Charge"]
+print("data copied, consuming {:.2f}s.".format(time() - start))
 
-for i in range(len(Result["HitPos"])) :
-    groundtruth["EventID"] = Result["EventID3"][i]
-    groundtruth["ChannelID"] = Result["ChannelID3"][i]
-    groundtruth["RiseTime"] = Result["HitPos"][i]
-    groundtruth["Charge"] = Result["Charge"][i]
-    groundtruth.append()
+num_processors = 8
+waveform_len = len(Result["Waveform"])
+truth_len = len(Result["HitPos"])
+dwf = h5file.create_dataset("Waveform", (waveform_len,), dtype=waveform_dtype, compression="gzip", compression_opts=9)
 
-# TriggerInfoTable.flush()
-WaveformTable.flush()
-GroundTruthTable.flush()
-print("h5 file wrote, consuming {:.2f}s.".format(time() - start))
+
+def WriteFile(rank) :
+    slices = np.linspace(0, waveform_len, num_processors + 1, dtype=np.int64)
+    print("{0}: slices[{0}]={1}".format(rank, slices[rank]))
+    # with dwf.collective:
+    dwf[slices[rank]:slices[rank + 1]] = WaveformTable[slices[rank]:slices[rank + 1]]
+
+
+start = time()
+with multiprocessing.Pool(num_processors) as pool :
+    pool.map(WriteFile, list(range(num_processors)))
+# for rank in range(num_processors) :
+#     WriteFile(rank)
+# dtr = h5file.create_dataset("GroundTruth", (truth_len,), dtype=truth_dtype, compression="gzip", compression_opts=9)
+# with dtr.collective:
+#     dtr[:] = GroundTruthTable
+print("h5 file written, consuming {:.2f}s.".format(time() - start))
 
 h5file.close()
 print("Finished, consuming {:.2f}s.".format(time() - global_start))
