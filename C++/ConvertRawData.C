@@ -40,9 +40,10 @@ int main(int argc, char** argv)
 		program.parse_args(argc, argv);
 	}
 	catch (const runtime_error& err) {
-		cout << err.what() << endl;
 		cout << program;
-		abort();
+		if(string(err.what())=="help called") return 0;
+		cout << err.what() << endl;
+		return 2;
 	}
 	auto inputfilename = program.get<string>("InputROOTfile");
 	auto outputfilename = program.get<string>("OutputH5File");
@@ -109,7 +110,7 @@ int main(int argc, char** argv)
 	FL_PacketTable waveform_d(output, "/Waveform", waveformtable, chunksize, dsp);
 	if(! waveform_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table Waveform.");
-		return 1;
+		abort();
 	}
 	
 	hid_t triggerinfotable = H5Tcreate (H5T_COMPOUND, sizeof(TriggerInfo_t));
@@ -122,7 +123,7 @@ int main(int argc, char** argv)
 	FL_PacketTable triggerinfo_d(output, "/TriggerInfo", triggerinfotable, chunksize, dsp);
 	if(! triggerinfo_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table TriggerInfo.");
-		return 1;
+		abort();
 	}
 
 	// converting loop
