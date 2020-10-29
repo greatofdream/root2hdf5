@@ -25,8 +25,10 @@ using namespace std;
 
 #include "H5PacketTable.h"
 
-// A program to dump waveforms from a binary file of XMASS 800kg FADC
-// to hdf5.
+// A program to convert raw data from a root file of JP1t to hdf5
+
+void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, int chunksize);
+
 int main(int argc, char** argv)
 {
 	// Parsing Arguments
@@ -52,18 +54,42 @@ int main(int argc, char** argv)
 
 	// Read Input file
 	TFile* ipt = new TFile(TString(inputfilename), "read");
-	TTree* ReaoutTree = nullptr;
-	ipt->GetObject("Readout",ReaoutTree);
+	TTree* ReadoutTree = nullptr;
+	ipt->GetObject("Readout",ReadoutTree);
+	// Create output file
+	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	if(output <0) { fprintf(stderr, "Couldn't create file.\n"); return 1; }
+	// Set H5 compression level
+	herr_t err;
+	hid_t dsp = H5Pcreate(H5P_DATASET_CREATE);
+	err = H5Pset_deflate(dsp, compression_level);
+	if(err < 0) fprintf(stderr, "Error setting compression level.");
+
+	Convert_Readout_Tree(ReadoutTree, output, dsp, chunksize);
+
+	err = H5Fclose(output);
+	if( err < 0 )
+		fprintf(stderr, "Failed to close file.\n");
+	cout<<"done!"<<endl;
+
+	ipt->Close();
+
+	return 0;
+}
+
+void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, int chunksize)
+{
+	// Read Waveform and ChannelId
 	vector<uint32_t>* Waveform = nullptr;
 	vector<uint32_t>* ChannelId = nullptr;
-	ReaoutTree->SetBranchAddress("ChannelId",&ChannelId);
-	ReaoutTree->SetBranchAddress("Waveform",&Waveform);
+	ReadoutTree->SetBranchAddress("ChannelId",&ChannelId);
+	ReadoutTree->SetBranchAddress("Waveform",&Waveform);
 
 	// determine WindowSize
-	ReaoutTree->GetEntry(0);
+	ReadoutTree->GetEntry(0);
 	int WindowSize = Waveform->size()/ChannelId->size();
 
-	// define output data structure
+	// define outputfile data structure
 	struct TriggerInfo_t {
 		int32_t runno;
 		int32_t triggerno;
@@ -75,14 +101,14 @@ int main(int argc, char** argv)
 	TriggerInfo_t* TriggerInfo= (TriggerInfo_t*) malloc(sizeof(TriggerInfo_t));
 
 	// directly read root data into struct.
-	ReaoutTree->SetBranchAddress("RunNo",&TriggerInfo->runno);
-	ReaoutTree->SetBranchAddress("TriggerNo",&TriggerInfo->triggerno);
-	ReaoutTree->SetBranchAddress("TriggerType",&TriggerInfo->triggertype);
-	ReaoutTree->SetBranchAddress("DetectorID",&TriggerInfo->triggerno);
-	ReaoutTree->SetBranchAddress("Sec",&TriggerInfo->sec);
-	ReaoutTree->SetBranchAddress("NanoSec",&TriggerInfo->nanosec);
+	ReadoutTree->SetBranchAddress("RunNo",&TriggerInfo->runno);
+	ReadoutTree->SetBranchAddress("TriggerNo",&TriggerInfo->triggerno);
+	ReadoutTree->SetBranchAddress("TriggerType",&TriggerInfo->triggertype);
+	ReadoutTree->SetBranchAddress("DetectorID",&TriggerInfo->triggerno);
+	ReadoutTree->SetBranchAddress("Sec",&TriggerInfo->sec);
+	ReadoutTree->SetBranchAddress("NanoSec",&TriggerInfo->nanosec);
 	
-	// define output data structure
+	// define outputfile data structure
 	// caution: struct alignment. sizeof(Readout_t) != HOFFSET(Readout_t, waveform)
 	struct Readout_t {
 		int32_t triggerno;
@@ -92,22 +118,16 @@ int main(int argc, char** argv)
 	size_t readout_size = sizeof(Readout_t)+sizeof(*Readout_t::waveform)*WindowSize;
 	Readout_t* Readout= (Readout_t*) malloc(readout_size);
 
-	// Set H5 compression level
-	herr_t err;
-	hid_t dsp = H5Pcreate(H5P_DATASET_CREATE);
-	err = H5Pset_deflate(dsp, compression_level);
-	if(err < 0) fprintf(stderr, "Error setting compression level.");
-	// Create output file
-	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-	if(output <0) { fprintf(stderr, "Couldn't create file.\n"); return 1; }
-	// Create output Table
+	// Create Readout Group
+	hid_t ReadoutGroup = H5Gcreate1(outputfile, "/Readout",100);
+	// Create outputfile Table
 	hid_t waveformtable = H5Tcreate (H5T_COMPOUND, readout_size);
 	H5Tinsert (waveformtable, "TriggerNo", HOFFSET(Readout_t, triggerno), H5T_NATIVE_INT32);
 	H5Tinsert (waveformtable, "ChannelID", HOFFSET(Readout_t, channelid), H5T_NATIVE_INT32);
 	hsize_t dim[1]; dim[0] = WindowSize;
 	hid_t waveform_t = H5Tarray_create(H5T_NATIVE_INT16, 1, dim);
 	H5Tinsert (waveformtable, "Waveform", HOFFSET(Readout_t, waveform), waveform_t);
-	FL_PacketTable waveform_d(output, "/Waveform", waveformtable, chunksize, dsp);
+	FL_PacketTable waveform_d(ReadoutGroup, "Waveform", waveformtable, chunksize, dsp);
 	if(! waveform_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table Waveform.");
 		abort();
@@ -120,19 +140,21 @@ int main(int argc, char** argv)
 	H5Tinsert (triggerinfotable, "DetectorID", HOFFSET(TriggerInfo_t, detectorid), H5T_NATIVE_INT32);
 	H5Tinsert (triggerinfotable, "Sec", HOFFSET(TriggerInfo_t, sec), H5T_NATIVE_INT32);
 	H5Tinsert (triggerinfotable, "NanoSec", HOFFSET(TriggerInfo_t, nanosec), H5T_NATIVE_INT32);
-	FL_PacketTable triggerinfo_d(output, "/TriggerInfo", triggerinfotable, chunksize, dsp);
+	FL_PacketTable triggerinfo_d(ReadoutGroup, "TriggerInfo", triggerinfotable, chunksize, dsp);
 	if(! triggerinfo_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table TriggerInfo.");
 		abort();
 	}
 
 	// converting loop
-	cout<<"Converting "<<argv[1]<<" to "<<argv[2]<<endl;
-	uint64_t nevt= ReaoutTree->GetEntries();
+	char outputfilename[100];
+	H5Fget_name(outputfile,outputfilename,100);
+	cout<<"Converting Readout Tree of "<<ReadoutTree->GetCurrentFile()->GetName()<<" to "<<outputfilename<<endl;
+	uint64_t nevt= ReadoutTree->GetEntries();
 	cout<<nevt<<" events to be processed"<<endl;
 
 	for (unsigned int ievt=0; ievt<nevt; ievt++) {
-		ReaoutTree->GetEntry(ievt);
+		ReadoutTree->GetEntry(ievt);
 		Readout->triggerno = TriggerInfo->triggerno;
 		for(int i=0;i<ChannelId->size();i++)
 		{
@@ -145,14 +167,5 @@ int main(int argc, char** argv)
 		if (ievt==0) cout<<"start processing ..."<<endl;
 		else if (ievt%1000==0) cout<<ievt<<" events converted"<<endl;
 	}
-
-	err = H5Fclose(output);
-	if( err < 0 )
-		fprintf(stderr, "Failed to close file.\n");
-	cout<<"done!"<<endl;
-
 	free(Readout);
-	ipt->Close();
-
-	return 0;
 }
