@@ -8,6 +8,8 @@
 
 
 #include "argparse.hpp"
+#include <bits/stdint-intn.h>
+#include <bits/stdint-uintn.h>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -27,10 +29,12 @@ using namespace std;
 // to hdf5.
 int main(int argc, char** argv)
 {
+	// Parsing Arguments
 	argparse::ArgumentParser program("H5Test");
 	program.add_argument("InputROOTfile");
 	program.add_argument("OutputH5File");
-	program.add_argument("-c","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-ch","--chunksize").help("chunksize of h5 file").default_value(16).action([](const std::string& value) { return std::stoi(value); });;
 
 	try {
 		program.parse_args(argc, argv);
@@ -43,15 +47,14 @@ int main(int argc, char** argv)
 	auto inputfilename = program.get<string>("InputROOTfile");
 	auto outputfilename = program.get<string>("OutputH5File");
 	int compression_level = program.get<int>("--compress");
+	int chunksize = program.get<int>("--chunksize");
 
 	// Read Input file
 	TFile* ipt = new TFile(TString(inputfilename), "read");
 	TTree* ReaoutTree = nullptr;
 	ipt->GetObject("Readout",ReaoutTree);
-	int32_t TriggerNo;
 	vector<uint32_t>* Waveform = nullptr;
 	vector<uint32_t>* ChannelId = nullptr;
-	ReaoutTree->SetBranchAddress("TriggerNo",&TriggerNo);
 	ReaoutTree->SetBranchAddress("ChannelId",&ChannelId);
 	ReaoutTree->SetBranchAddress("Waveform",&Waveform);
 
@@ -59,43 +62,66 @@ int main(int argc, char** argv)
 	ReaoutTree->GetEntry(0);
 	int WindowSize = Waveform->size()/ChannelId->size();
 
+	// define output data structure
+	struct TriggerInfo_t {
+		int32_t runno;
+		int32_t triggerno;
+		int32_t detectorid;
+		int32_t triggertype;
+		int32_t sec;
+		int32_t nanosec;
+	};
+	TriggerInfo_t* TriggerInfo= (TriggerInfo_t*) malloc(sizeof(TriggerInfo_t));
+
+	// directly read root data into struct.
+	ReaoutTree->SetBranchAddress("RunNo",&TriggerInfo->runno);
+	ReaoutTree->SetBranchAddress("TriggerNo",&TriggerInfo->triggerno);
+	ReaoutTree->SetBranchAddress("TriggerType",&TriggerInfo->triggertype);
+	ReaoutTree->SetBranchAddress("DetectorID",&TriggerInfo->triggerno);
+	ReaoutTree->SetBranchAddress("Sec",&TriggerInfo->sec);
+	ReaoutTree->SetBranchAddress("NanoSec",&TriggerInfo->nanosec);
+	
+	// define output data structure
 	// caution: struct alignment. sizeof(Readout_t) != HOFFSET(Readout_t, waveform)
 	struct Readout_t {
-		uint64_t eventid;
-		uint16_t channelid;
-		uint16_t waveform[];
+		int32_t triggerno;
+		int32_t channelid;
+		int16_t waveform[];
 	};
 	size_t readout_size = sizeof(Readout_t)+sizeof(*Readout_t::waveform)*WindowSize;
 	Readout_t* Readout= (Readout_t*) malloc(readout_size);
 
+	// Set H5 compression level
 	herr_t err;
-	// Create output file
-	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-	if(output <0) {
-		fprintf(stderr, "Couldn't create file.\n");
-		return 1;
-	}
-	hid_t ev_c = H5Tcreate (H5T_COMPOUND, readout_size);
-	H5Tinsert (ev_c, "EventID", HOFFSET(Readout_t, eventid), H5T_NATIVE_UINT);
-	H5Tinsert (ev_c, "ChannelID", HOFFSET(Readout_t, channelid), H5T_NATIVE_USHORT);
-	hsize_t dim[] = {0};
-	dim[0] = WindowSize;
-	hid_t waveform_t = H5Tarray_create(H5T_NATIVE_USHORT, 1, dim);
-	H5Tinsert (ev_c, "Waveform", HOFFSET(Readout_t, waveform), waveform_t);
-
 	hid_t dsp = H5Pcreate(H5P_DATASET_CREATE);
 	err = H5Pset_deflate(dsp, compression_level);
-	if(err < 0)
-		fprintf(stderr, "Error setting compression level.");
-
-	/*
-chunksize:
-32: 27.12s, 7.2M @kmlb
-16: 26.88, 7.2M @kmlb
-*/
-	FL_PacketTable waveform_d(output, "/Waveform", ev_c, 16, dsp);
+	if(err < 0) fprintf(stderr, "Error setting compression level.");
+	// Create output file
+	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	if(output <0) { fprintf(stderr, "Couldn't create file.\n"); return 1; }
+	// Create output Table
+	hid_t waveformtable = H5Tcreate (H5T_COMPOUND, readout_size);
+	H5Tinsert (waveformtable, "TriggerNo", HOFFSET(Readout_t, triggerno), H5T_NATIVE_INT32);
+	H5Tinsert (waveformtable, "ChannelID", HOFFSET(Readout_t, channelid), H5T_NATIVE_INT32);
+	hsize_t dim[1]; dim[0] = WindowSize;
+	hid_t waveform_t = H5Tarray_create(H5T_NATIVE_INT16, 1, dim);
+	H5Tinsert (waveformtable, "Waveform", HOFFSET(Readout_t, waveform), waveform_t);
+	FL_PacketTable waveform_d(output, "/Waveform", waveformtable, chunksize, dsp);
 	if(! waveform_d.IsValid()) {
-		fprintf(stderr, "Unable to create packet table.");
+		fprintf(stderr, "Unable to create packet table Waveform.");
+		return 1;
+	}
+	
+	hid_t triggerinfotable = H5Tcreate (H5T_COMPOUND, sizeof(TriggerInfo_t));
+	H5Tinsert (triggerinfotable, "RunNo", HOFFSET(TriggerInfo_t, runno), H5T_NATIVE_INT32);
+	H5Tinsert (triggerinfotable, "TriggerNo", HOFFSET(TriggerInfo_t, triggerno), H5T_NATIVE_INT32);
+	H5Tinsert (triggerinfotable, "TriggerType", HOFFSET(TriggerInfo_t, triggertype), H5T_NATIVE_INT32);
+	H5Tinsert (triggerinfotable, "DetectorID", HOFFSET(TriggerInfo_t, detectorid), H5T_NATIVE_INT32);
+	H5Tinsert (triggerinfotable, "Sec", HOFFSET(TriggerInfo_t, sec), H5T_NATIVE_INT32);
+	H5Tinsert (triggerinfotable, "NanoSec", HOFFSET(TriggerInfo_t, nanosec), H5T_NATIVE_INT32);
+	FL_PacketTable triggerinfo_d(output, "/TriggerInfo", triggerinfotable, chunksize, dsp);
+	if(! triggerinfo_d.IsValid()) {
+		fprintf(stderr, "Unable to create packet table TriggerInfo.");
 		return 1;
 	}
 
@@ -106,13 +132,14 @@ chunksize:
 
 	for (unsigned int ievt=0; ievt<nevt; ievt++) {
 		ReaoutTree->GetEntry(ievt);
-		Readout->eventid = TriggerNo;
+		Readout->triggerno = TriggerInfo->triggerno;
 		for(int i=0;i<ChannelId->size();i++)
 		{
 			Readout->channelid = (*ChannelId)[i];
 			memcpy(Readout->waveform, Waveform->data()+i*WindowSize, sizeof(*Readout_t::waveform)*WindowSize);
 			waveform_d.AppendPacket( Readout );
 		}
+		triggerinfo_d.AppendPacket( TriggerInfo );
 
 		if (ievt==0) cout<<"start processing ..."<<endl;
 		else if (ievt%1000==0) cout<<ievt<<" events converted"<<endl;
@@ -128,5 +155,3 @@ chunksize:
 
 	return 0;
 }
-
-
