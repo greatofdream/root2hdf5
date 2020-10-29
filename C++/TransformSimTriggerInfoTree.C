@@ -8,6 +8,8 @@
 
 
 #include <H5Tpublic.h>
+#include <bits/stdint-intn.h>
+#include <cstdint>
 #include <iostream>
 #include "TTree.h"
 #include <vector>
@@ -19,6 +21,19 @@ using namespace std;
 
 void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, int chunksize)
 {
+	// define truthlist data structure
+	struct TruthList_t
+	{
+		int32_t runno;
+		int32_t segmentid;
+		int32_t vertexid;
+		int32_t triggerno;
+	};
+	TruthList_t *TruthList= (TruthList_t*) malloc(sizeof(TruthList_t));
+	vector<JPSimTruthTree_t> *TruthList_origin = nullptr;
+	SimTriggerInfoTree->SetBranchStatus("*",0);
+	for(auto activeBranch : {"RunId", "SegmentId", "VertexId"}) SimTriggerInfoTree->SetBranchStatus(TString("truthList.")+TString(activeBranch), 1);
+	SimTriggerInfoTree->SetBranchAddress("truthList",&TruthList_origin);
 	// define pelist data structure
 	struct PEList_t
 	{
@@ -31,13 +46,29 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 	vector<JPSimPE_t>* PEList_origin = nullptr;
 
 	// directly read root data into struct.
+	SimTriggerInfoTree->SetBranchStatus("PEList.*",1);
+	SimTriggerInfoTree->SetBranchStatus("RunNo",1);
+	SimTriggerInfoTree->SetBranchStatus("TriggerNo",1);
 	SimTriggerInfoTree->SetBranchAddress("RunNo",&PEList->runno);
 	SimTriggerInfoTree->SetBranchAddress("TriggerNo",&PEList->triggerno);
 	SimTriggerInfoTree->SetBranchAddress("PEList",&PEList_origin);
 
 	// Create SimTriggerInfo Group
 	hid_t SimTriggerInfoGroup = H5Gcreate1(outputfile, "/SimTriggerInfo",100);
-	// Create outputfile Table
+
+	// Create truthlist Table
+	hid_t truthlisttable = H5Tcreate (H5T_COMPOUND, sizeof(TruthList_t));
+	H5Tinsert (truthlisttable, "RunId", HOFFSET(TruthList_t, runno), H5T_NATIVE_INT32);
+	H5Tinsert (truthlisttable, "SegmentId", HOFFSET(TruthList_t, segmentid), H5T_NATIVE_INT32);
+	H5Tinsert (truthlisttable, "VertexId", HOFFSET(TruthList_t, vertexid), H5T_NATIVE_INT32);
+	H5Tinsert (truthlisttable, "TriggerNo", HOFFSET(TruthList_t, triggerno), H5T_NATIVE_INT32);
+	FL_PacketTable truthlist_d(SimTriggerInfoGroup, "TruthList", truthlisttable, chunksize, dsp);
+	if(! truthlist_d.IsValid()) {
+		fprintf(stderr, "Unable to create packet table TruthList.");
+		abort();
+	}
+
+	// Create pelist Table
 	hid_t pelisttable = H5Tcreate (H5T_COMPOUND, pelistsize);
 	H5Tinsert (pelisttable, "RunNo", HOFFSET(PEList_t, runno), H5T_NATIVE_INT32);
 	H5Tinsert (pelisttable, "TriggerNo", HOFFSET(PEList_t, triggerno), H5T_NATIVE_INT32);
@@ -73,6 +104,12 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 
 	for (unsigned int ievt=0; ievt<nevt; ievt++) {
 		SimTriggerInfoTree->GetEntry(ievt);
+		TruthList->triggerno = PEList->triggerno;
+		for(auto truth : *TruthList_origin) 
+		{
+			memcpy(TruthList, &truth, HOFFSET(TruthList_t, triggerno));
+			truthlist_d.AppendPacket( TruthList );
+		}
 		for(auto pe : *PEList_origin) 
 		{
 			memcpy(PEList->PEInfo, &pe, sizeof(JPSimPE_t));
@@ -83,4 +120,5 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 		else if (ievt%1000==0) cout<<ievt<<" events converted"<<endl;
 	}
 	free(PEList);
+	free(TruthList);
 }
