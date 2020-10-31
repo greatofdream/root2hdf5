@@ -32,7 +32,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 		int32_t VertexId;
 		int32_t VertexRadZ;
 		int32_t VertexRadA;
-		int32_t nParticle;
+		// int32_t nParticle;
 		double x;
 		double y;
 		double z;
@@ -53,7 +53,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	SimTruthTree->SetBranchAddress("VertexId",&SimTruth->VertexId);
 	SimTruthTree->SetBranchAddress("VertexRadZ",&SimTruth->VertexRadZ);
 	SimTruthTree->SetBranchAddress("VertexRadA",&SimTruth->VertexRadA);
-	SimTruthTree->SetBranchAddress("nParticle",&SimTruth->nParticle);
+	// SimTruthTree->SetBranchAddress("nParticle",&SimTruth->nParticle);
 	SimTruthTree->SetBranchAddress("x",&SimTruth->x);
 	SimTruthTree->SetBranchAddress("y",&SimTruth->y);
 	SimTruthTree->SetBranchAddress("z",&SimTruth->z);
@@ -75,7 +75,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	H5Tinsert (truthlisttable, "VertexId", HOFFSET(SimTruth_t, VertexId), H5T_NATIVE_INT32); 
 	H5Tinsert (truthlisttable, "VertexRadZ", HOFFSET(SimTruth_t, VertexRadZ), H5T_NATIVE_INT32); 
 	H5Tinsert (truthlisttable, "VertexRadA", HOFFSET(SimTruth_t, VertexRadA), H5T_NATIVE_INT32); 
-	H5Tinsert (truthlisttable, "nParticle", HOFFSET(SimTruth_t, nParticle), H5T_NATIVE_INT32); 
+	// H5Tinsert (truthlisttable, "nParticle", HOFFSET(SimTruth_t, nParticle), H5T_NATIVE_INT32); 
 	H5Tinsert (truthlisttable, "x", HOFFSET(SimTruth_t, x), H5T_NATIVE_DOUBLE); 
 	H5Tinsert (truthlisttable, "y", HOFFSET(SimTruth_t, y), H5T_NATIVE_DOUBLE); 
 	H5Tinsert (truthlisttable, "z", HOFFSET(SimTruth_t, z), H5T_NATIVE_DOUBLE); 
@@ -95,6 +95,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 		abort();
 	}
 
+	// Create Deposit Energy table.
 	struct DepositEnergy_t 
 	{
 		int32_t RunId;		// The ID of Run
@@ -105,32 +106,31 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	DepositEnergy_t *DepositEnergy = (DepositEnergy_t*) malloc(sizeof(DepositEnergy_t));
 	vector<double> *dEList = nullptr;
 	SimTruthTree->SetBranchAddress("dEList",&dEList);
-
-	// Creating Deposit Energy table.
-	hid_t dEtable = H5Tcreate (H5T_COMPOUND, sizeof(DepositEnergy));
+	hid_t dEtable = H5Tcreate (H5T_COMPOUND, sizeof(DepositEnergy_t));
 	H5Tinsert (dEtable, "RunId", HOFFSET(DepositEnergy_t, RunId), H5T_NATIVE_INT32); 
 	H5Tinsert (dEtable, "SegmentId", HOFFSET(DepositEnergy_t, SegmentId), H5T_NATIVE_INT32); 
 	H5Tinsert (dEtable, "VertexId", HOFFSET(DepositEnergy_t, VertexId), H5T_NATIVE_INT32); 
-	H5Tinsert (dEtable, "DepositEnergy", HOFFSET(DepositEnergy_t, DepositEnergy), H5T_NATIVE_INT32); 
+	H5Tinsert (dEtable, "DepositEnergy", HOFFSET(DepositEnergy_t, DepositEnergy), H5T_NATIVE_DOUBLE); 
 	FL_PacketTable dElist_d(SimTruthGroup, "DepositEnergy", dEtable, chunksize, dsp);
 	if(! dElist_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table DepositEnergy.");
 		abort();
 	}
 
+	// Create Track Table
 	struct TrackHeader_t
 	{
 		int32_t RunId;
 		int32_t VertexId;
-	};;
+	};
 	vector<JPSimTrack_t> *Track_origin = nullptr;
-	SimTruthTree->SetBranchAddress("TrackiList",&Track_origin);
+	SimTruthTree->SetBranchAddress("trackList",&Track_origin);
+	// size_t tracksize = sizeof(TrackHeader_t) + sizeof(JPSimTrack_t)
 	size_t tracksize = sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, StepPoints);
 	TrackHeader_t *Track = (TrackHeader_t*) malloc(tracksize);
-	// Create Track Table
 	hid_t tracktable = H5Tcreate (H5T_COMPOUND, tracksize);
 	H5Tinsert (tracktable, "RunId", HOFFSET(TrackHeader_t, RunId), H5T_NATIVE_INT32);
-	H5Tinsert (tracktable, "TrackHeader_t", HOFFSET(TrackHeader_t, VertexId), H5T_NATIVE_INT32);
+	H5Tinsert (tracktable, "VertexId", HOFFSET(TrackHeader_t, VertexId), H5T_NATIVE_INT32);
 	H5Tinsert (tracktable, "nSegmentId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nSegmentId), H5T_NATIVE_INT32);
 	H5Tinsert (tracktable, "nParentTrackId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nParentTrackId), H5T_NATIVE_INT32);
 	H5Tinsert (tracktable, "nTrackId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nTrackId), H5T_NATIVE_INT32);
@@ -143,7 +143,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 		abort();
 	}
 
-	// define steppoint data structure
+	// Create StepPoint Table
 	struct StepPointHeader_t 
 	{
 		int32_t RunId;		// The ID of Run
@@ -153,7 +153,6 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	};
 	size_t steppointsize = sizeof(StepPointHeader_t) + HOFFSET(JPSimStepPoint_t, nSecondaryPdgId);
 	StepPointHeader_t* StepPointHeader = (StepPointHeader_t*) malloc(steppointsize);
-	// Create Track Table
 	hid_t steppointtable = H5Tcreate (H5T_COMPOUND, steppointsize);
 	H5Tinsert (steppointtable, "RunId", HOFFSET(StepPointHeader_t, RunId), H5T_NATIVE_INT32);
 	H5Tinsert (steppointtable, "SegmentId", HOFFSET(StepPointHeader_t, SegmentId), H5T_NATIVE_INT32);
@@ -178,6 +177,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 		abort();
 	}
 
+	// Create SecondaryParticle Table
 	struct SecondaryParticle_t
 	{
 		int32_t RunId;		// The ID of Run
@@ -195,6 +195,11 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	H5Tinsert (secondaryparticletable, "TrackId", HOFFSET(SecondaryParticle_t, TrackId), H5T_NATIVE_INT32);
 	H5Tinsert (secondaryparticletable, "StepId", HOFFSET(SecondaryParticle_t, StepId), H5T_NATIVE_INT32);
 	H5Tinsert (secondaryparticletable, "nSecondaryPdgId;", HOFFSET(SecondaryParticle_t, nSecondaryPdgId), H5T_NATIVE_INT32);
+	FL_PacketTable secondaryparticle_d(SimTruthGroup, "SecondaryParticle", tracktable, chunksize, dsp);
+	if(! secondaryparticle_d.IsValid()) {
+		fprintf(stderr, "Unable to create packet table SecondaryParticle.");
+		abort();
+	}
 
 	// converting loop
 	char outputfilename[100];
@@ -205,22 +210,39 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 
 	for (unsigned int ievt=0; ievt<nevt; ievt++) {
 		SimTruthTree->GetEntry(ievt);
-		Truth->triggerno = PEList->triggerno;
-		for(auto truth : *Truth_origin) 
+		// cout<<Track_origin->size()<<endl;
+		truthlist_d.AppendPacket( SimTruth );
+		secondaryparticle->RunId = StepPointHeader->RunId = Track->RunId = DepositEnergy->RunId = SimTruth->RunId;
+		secondaryparticle->SegmentId = StepPointHeader->SegmentId = DepositEnergy->SegmentId = SimTruth->SegmentId;
+		secondaryparticle->VertexId = StepPointHeader->VertexId = Track->VertexId = DepositEnergy->VertexId = SimTruth->VertexId;
+		for(auto dE : *dEList) 
 		{
-			memcpy(Truth, &truth, HOFFSET(Truth_t, triggerno));
-			truthlist_d.AppendPacket( Truth );
+			DepositEnergy->DepositEnergy = dE;
+			dElist_d.AppendPacket( DepositEnergy );
 		}
-		for(auto pe : *PEList_origin) 
+		for(auto track : *Track_origin) 
 		{
-			memcpy(PEList->PEInfo, &pe, sizeof(JPSimPE_t));
-			pelist_d.AppendPacket( PEList );
+			// *(int32_t*)(Track + sizeof(TrackHeader_t)) = 20;
+			// memcpy(Track+sizeof(TrackHeader_t), &track, HOFFSET(JPSimTrack_t, StepPoints));
+			track_d.AppendPacket( Track );
+			for(auto step : track.StepPoints ) 
+			{
+				// memcpy(StepPointHeader+sizeof(StepPointHeader_t), &step, HOFFSET(JPSimStepPoint_t, nSecondaryPdgId));
+				steppoint_d.AppendPacket( StepPointHeader );
+				for(auto secondarypdgid : step.nSecondaryPdgId ) 
+				{
+					secondaryparticle->nSecondaryPdgId = secondarypdgid;
+					secondaryparticle_d.AppendPacket( secondaryparticle );
+				}
+			}
 		}
 
 		if (ievt==0) cout<<"start processing ..."<<endl;
 		else if (ievt%1000==0) cout<<ievt<<" events converted"<<endl;
 	}
-	free(PEList);
 	free(SimTruth);
 	free(DepositEnergy);
+	free(Track);
+	free(StepPointHeader);
+	free(secondaryparticle);
 }
