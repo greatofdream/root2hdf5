@@ -122,28 +122,21 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	{
 		int32_t RunId;
 		int32_t VertexId;
-		Int_t nSegmentId;
-		Int_t nParentTrackId;
-		Int_t nTrackId;
-		Int_t nPrimaryId;
-		Int_t nPdgId;
-		Bool_t bDetectedPhoton;
+		int trackinfo[];
 	};
 	vector<JPSimTrack_t> *Track_origin = nullptr;
 	SimTruthTree->SetBranchAddress("trackList",&Track_origin);
-	// size_t tracksize = sizeof(TrackHeader_t) + sizeof(JPSimTrack_t)
-	// size_t tracksize = sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, StepPoints);
-	size_t tracksize = sizeof(TrackHeader_t);
+	size_t tracksize = sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, StepPoints);
 	TrackHeader_t *Track = (TrackHeader_t*) malloc(tracksize);
 	hid_t tracktable = H5Tcreate (H5T_COMPOUND, tracksize);
 	H5Tinsert (tracktable, "RunId", HOFFSET(TrackHeader_t, RunId), H5T_NATIVE_INT32);
 	H5Tinsert (tracktable, "VertexId", HOFFSET(TrackHeader_t, VertexId), H5T_NATIVE_INT32);
-	H5Tinsert (tracktable, "nSegmentId", HOFFSET(TrackHeader_t, nSegmentId), H5T_NATIVE_INT32);
-	H5Tinsert (tracktable, "nParentTrackId", HOFFSET(TrackHeader_t, nParentTrackId), H5T_NATIVE_INT32);
-	H5Tinsert (tracktable, "nTrackId", HOFFSET(TrackHeader_t, nTrackId), H5T_NATIVE_INT32);
-	H5Tinsert (tracktable, "nPrimaryId", HOFFSET(TrackHeader_t, nPrimaryId), H5T_NATIVE_INT32);
-	H5Tinsert (tracktable, "nPdgId", HOFFSET(TrackHeader_t, nPdgId), H5T_NATIVE_INT32);
-	H5Tinsert (tracktable, "bDetectedPhoton", HOFFSET(TrackHeader_t, bDetectedPhoton), H5T_NATIVE_HBOOL);
+	H5Tinsert (tracktable, "nSegmentId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nSegmentId), H5T_NATIVE_INT32);
+	H5Tinsert (tracktable, "nParentTrackId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nParentTrackId), H5T_NATIVE_INT32);
+	H5Tinsert (tracktable, "nTrackId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nTrackId), H5T_NATIVE_INT32);
+	H5Tinsert (tracktable, "nPrimaryId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nPrimaryId), H5T_NATIVE_INT32);
+	H5Tinsert (tracktable, "nPdgId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nPdgId), H5T_NATIVE_INT32);
+	H5Tinsert (tracktable, "bDetectedPhoton", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, bDetectedPhoton), H5T_NATIVE_HBOOL);
 	FL_PacketTable track_d(SimTruthGroup, "TrackList", tracktable, chunksize, dsp);
 	if(! track_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table TrackList.");
@@ -231,13 +224,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 		{
 			// *(int32_t*)(Track + sizeof(TrackHeader_t)) = 20;
 			// memcpy(Track+sizeof(TrackHeader_t), &track, HOFFSET(JPSimTrack_t, StepPoints));
-			// memcpy(&Track->nSegmentId, &track, HOFFSET(JPSimTrack_t, StepPoints));
-			Track->nSegmentId = track.nSegmentId;
-			Track->nParentTrackId = track.nParentTrackId;
-			Track->nTrackId = track.nTrackId;
-			Track->nPrimaryId = track.nPrimaryId;
-			Track->nPdgId = track.nPdgId;
-			Track->bDetectedPhoton = track.bDetectedPhoton;
+			memcpy(Track->trackinfo, &track, HOFFSET(JPSimTrack_t, StepPoints));
 			track_d.AppendPacket( Track );
 			for(auto step : track.StepPoints ) 
 			{
