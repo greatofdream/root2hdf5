@@ -82,9 +82,9 @@ int main(int argc, char** argv)
 	err = H5Pset_deflate(dsp, compression_level);
 	if(err < 0) fprintf(stderr, "Error setting compression level.");
 
-	Convert_RunHeader_Tree(RunHeaderTree, output, dsp, runheader_chunksize);
-	Convert_Readout_Tree(ReadoutTree, output, dsp, readout_chunksize);
-	Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, simtruth_chunksize);
+	// Convert_RunHeader_Tree(RunHeaderTree, output, dsp, runheader_chunksize);
+	// Convert_Readout_Tree(ReadoutTree, output, dsp, readout_chunksize);
+	// Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, simtruth_chunksize);
 	Convert_SimTruth_Tree(SimTruhTree, output, dsp, simtruth_chunksize);
 
 	err = H5Fclose(output);

@@ -3,7 +3,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(JPDataConverter)
 set(CMAKE_CXX_STANDARD 17) # required for argparse
 
-set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_BUILD_TYPE Debug)
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
 
 find_package(ROOT)
@@ -19,11 +19,14 @@ target_link_libraries(TransformReadoutTree ${ROOT_LIBRARIES} ${HDF5_LIBRARIES}
 add_library(TransformRunHeaderTree SHARED TransformRunHeaderTree.C)
 target_link_libraries(TransformRunHeaderTree ${ROOT_LIBRARIES} ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES})
+add_library(TransformTrack SHARED ./TransformTrack.C)
+target_link_libraries(TransformTrack ${ROOT_LIBRARIES}
+    ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
 add_library(TransformSimTriggerInfoTree SHARED TransformSimTriggerInfoTree.C)
 target_link_libraries(TransformSimTriggerInfoTree ${ROOT_LIBRARIES}
     ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
 add_library(TransformSimTruthTree SHARED TransformSimTruthTree.C)
-target_link_libraries(TransformSimTruthTree ${ROOT_LIBRARIES}
+target_link_libraries(TransformSimTruthTree TransformTrack ${ROOT_LIBRARIES}
     ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
 
 add_executable(ConvertRawData ConvertRawData.C)
