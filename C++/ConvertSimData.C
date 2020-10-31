@@ -32,6 +32,7 @@ using namespace std;
 void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, int chunksize);
 void Convert_RunHeader_Tree(TTree* RunHeaderTree, hid_t outputfile, hid_t dsp, int chunksize);
 void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, int chunksize);
+void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int chunksize);
 
 int main(int argc, char** argv)
 {
@@ -61,10 +62,11 @@ int main(int argc, char** argv)
 
 	// Read Input file
 	TFile* ipt = new TFile(TString(inputfilename), "read");
-	TTree* ReadoutTree = nullptr, *RunHeaderTree = nullptr, *SimTriggerInfoTree = nullptr;
+	TTree* ReadoutTree = nullptr, *RunHeaderTree = nullptr, *SimTriggerInfoTree = nullptr, *SimTruhTree = nullptr;
 	ipt->GetObject("Readout",ReadoutTree);
 	ipt->GetObject("RunHeader",RunHeaderTree);
 	ipt->GetObject("SimTriggerInfo",SimTriggerInfoTree);
+	ipt->GetObject("SimTruth",SimTruhTree);
 	// Create output file
 	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 	if(output <0) { fprintf(stderr, "Couldn't create file.\n"); return 1; }
@@ -74,9 +76,10 @@ int main(int argc, char** argv)
 	err = H5Pset_deflate(dsp, compression_level);
 	if(err < 0) fprintf(stderr, "Error setting compression level.");
 
-	// Convert_Readout_Tree(ReadoutTree, output, dsp, chunksize);
-	// Convert_RunHeader_Tree(RunHeaderTree, output, dsp, chunksize);
+	Convert_Readout_Tree(ReadoutTree, output, dsp, chunksize);
+	Convert_RunHeader_Tree(RunHeaderTree, output, dsp, chunksize);
 	Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, chunksize);
+	Convert_SimTruth_Tree(SimTruhTree, output, dsp, chunksize);
 
 	err = H5Fclose(output);
 	if( err < 0 )
