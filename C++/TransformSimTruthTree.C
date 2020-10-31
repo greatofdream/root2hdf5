@@ -19,7 +19,7 @@
 
 using namespace std;
 
-void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int chunksize)
+void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vector<int> simtruth_chunksize)
 {
 	// Create SimTruth Group
 	hid_t SimTruthGroup = H5Gcreate1(outputfile, "/SimTruth",100);
@@ -89,7 +89,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	H5Tinsert (truthlisttable, "CPE", HOFFSET(SimTruth_t, CPE), H5T_NATIVE_INT32); 
 	H5Tinsert (truthlisttable, "SPE", HOFFSET(SimTruth_t, SPE), H5T_NATIVE_INT32); 
 	H5Tinsert (truthlisttable, "APE", HOFFSET(SimTruth_t, APE), H5T_NATIVE_INT32); 
-	FL_PacketTable truthlist_d(SimTruthGroup, "SimTruth", truthlisttable, chunksize, dsp);
+	FL_PacketTable truthlist_d(SimTruthGroup, "SimTruth", truthlisttable, simtruth_chunksize[0], dsp);
 	if(! truthlist_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table SimTruth.");
 		abort();
@@ -105,7 +105,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	H5Tinsert (primaryparticletable, "py", HOFFSET(JPSimPrimaryParticle_t, py), H5T_NATIVE_DOUBLE); 
 	H5Tinsert (primaryparticletable, "pz", HOFFSET(JPSimPrimaryParticle_t, pz), H5T_NATIVE_DOUBLE); 
 	H5Tinsert (primaryparticletable, "Ek", HOFFSET(JPSimPrimaryParticle_t, Ek), H5T_NATIVE_DOUBLE); 
-	FL_PacketTable PrimaryParticle_d(SimTruthGroup, "PrimaryParticle", primaryparticletable, chunksize, dsp);
+	FL_PacketTable PrimaryParticle_d(SimTruthGroup, "PrimaryParticle", primaryparticletable, simtruth_chunksize[1], dsp);
 	if(! PrimaryParticle_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table DepositEnergy.");
 		abort();
@@ -127,7 +127,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	H5Tinsert (dEtable, "SegmentId", HOFFSET(DepositEnergy_t, SegmentId), H5T_NATIVE_INT32); 
 	H5Tinsert (dEtable, "VertexId", HOFFSET(DepositEnergy_t, VertexId), H5T_NATIVE_INT32); 
 	H5Tinsert (dEtable, "DepositEnergy", HOFFSET(DepositEnergy_t, DepositEnergy), H5T_NATIVE_DOUBLE); 
-	FL_PacketTable dElist_d(SimTruthGroup, "DepositEnergy", dEtable, chunksize, dsp);
+	FL_PacketTable dElist_d(SimTruthGroup, "DepositEnergy", dEtable, simtruth_chunksize[2], dsp);
 	if(! dElist_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table DepositEnergy.");
 		abort();
@@ -153,7 +153,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	H5Tinsert (tracktable, "nPrimaryId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nPrimaryId), H5T_NATIVE_INT32);
 	H5Tinsert (tracktable, "nPdgId", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, nPdgId), H5T_NATIVE_INT32);
 	H5Tinsert (tracktable, "bDetectedPhoton", sizeof(TrackHeader_t) + HOFFSET(JPSimTrack_t, bDetectedPhoton), H5T_NATIVE_HBOOL);
-	FL_PacketTable track_d(SimTruthGroup, "TrackList", tracktable, chunksize, dsp);
+	FL_PacketTable track_d(SimTruthGroup, "TrackList", tracktable, simtruth_chunksize[3], dsp);
 	if(! track_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table TrackList.");
 		abort();
@@ -188,7 +188,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	H5Tinsert (steppointtable, "fTime", sizeof(StepPointHeader_t) + HOFFSET(JPSimStepPoint_t, fTime), H5T_NATIVE_DOUBLE); 
 	H5Tinsert (steppointtable, "nTargetZ", sizeof(StepPointHeader_t) + HOFFSET(JPSimStepPoint_t, nTargetZ), H5T_NATIVE_INT32); 
 	H5Tinsert (steppointtable, "nTargetA", sizeof(StepPointHeader_t) + HOFFSET(JPSimStepPoint_t, nTargetA), H5T_NATIVE_INT32); 
-	FL_PacketTable steppoint_d(SimTruthGroup, "StepPoint", steppointtable, chunksize, dsp);
+	FL_PacketTable steppoint_d(SimTruthGroup, "StepPoint", steppointtable, simtruth_chunksize[4], dsp);
 	if(! steppoint_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table StepPoint.");
 		abort();
@@ -212,7 +212,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int
 	H5Tinsert (secondaryparticletable, "TrackId", HOFFSET(SecondaryParticle_t, TrackId), H5T_NATIVE_INT32);
 	H5Tinsert (secondaryparticletable, "StepId", HOFFSET(SecondaryParticle_t, StepId), H5T_NATIVE_INT32);
 	H5Tinsert (secondaryparticletable, "nSecondaryPdgId;", HOFFSET(SecondaryParticle_t, nSecondaryPdgId), H5T_NATIVE_INT32);
-	FL_PacketTable secondaryparticle_d(SimTruthGroup, "SecondaryParticle", tracktable, chunksize, dsp);
+	FL_PacketTable secondaryparticle_d(SimTruthGroup, "SecondaryParticle", tracktable, simtruth_chunksize[5], dsp);
 	if(! secondaryparticle_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table SecondaryParticle.");
 		abort();

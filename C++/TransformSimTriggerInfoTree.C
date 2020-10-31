@@ -19,7 +19,7 @@
 
 using namespace std;
 
-void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, int chunksize)
+void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, vector<int> simtriggerinfo_chunksize)
 {
 	// define truthlist data structure
 	struct TruthList_t
@@ -62,7 +62,7 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 	H5Tinsert (truthlisttable, "SegmentId", HOFFSET(TruthList_t, segmentid), H5T_NATIVE_INT32);
 	H5Tinsert (truthlisttable, "VertexId", HOFFSET(TruthList_t, vertexid), H5T_NATIVE_INT32);
 	H5Tinsert (truthlisttable, "TriggerNo", HOFFSET(TruthList_t, triggerno), H5T_NATIVE_INT32);
-	FL_PacketTable truthlist_d(SimTriggerInfoGroup, "TruthList", truthlisttable, chunksize, dsp);
+	FL_PacketTable truthlist_d(SimTriggerInfoGroup, "TruthList", truthlisttable, simtriggerinfo_chunksize[0], dsp);
 	if(! truthlist_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table TruthList.");
 		abort();
@@ -89,7 +89,7 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 	H5Tinsert (pelisttable, "Wavelength", sizeof(PEList_t) + HOFFSET(JPSimPE_t, Wavelength), H5T_NATIVE_DOUBLE);
 	H5Tinsert (pelisttable, "PEType", sizeof(PEList_t) + HOFFSET(JPSimPE_t, PEType), H5T_NATIVE_INT32);
 	H5Tinsert (pelisttable, "Charge", sizeof(PEList_t) + HOFFSET(JPSimPE_t, Charge), H5T_NATIVE_DOUBLE);
-	FL_PacketTable pelist_d(SimTriggerInfoGroup, "PEList", pelisttable, chunksize, dsp);
+	FL_PacketTable pelist_d(SimTriggerInfoGroup, "PEList", pelisttable, simtriggerinfo_chunksize[1], dsp);
 	if(! pelist_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table PEList.");
 		abort();

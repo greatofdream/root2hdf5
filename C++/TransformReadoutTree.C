@@ -15,7 +15,7 @@
 
 using namespace std;
 
-void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, int chunksize)
+void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vector<int> readout_chunksize)
 {
 	// Read Waveform and ChannelId
 	vector<uint32_t>* Waveform = nullptr;
@@ -65,7 +65,7 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, int c
 	hsize_t dim[1]; dim[0] = WindowSize;
 	hid_t waveform_t = H5Tarray_create(H5T_NATIVE_INT16, 1, dim);
 	H5Tinsert (waveformtable, "Waveform", HOFFSET(Readout_t, waveform), waveform_t);
-	FL_PacketTable waveform_d(ReadoutGroup, "Waveform", waveformtable, chunksize, dsp);
+	FL_PacketTable waveform_d(ReadoutGroup, "Waveform", waveformtable, readout_chunksize[1], dsp);
 	if(! waveform_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table Waveform.");
 		abort();
@@ -78,7 +78,7 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, int c
 	H5Tinsert (triggerinfotable, "DetectorID", HOFFSET(TriggerInfo_t, detectorid), H5T_NATIVE_INT32);
 	H5Tinsert (triggerinfotable, "Sec", HOFFSET(TriggerInfo_t, sec), H5T_NATIVE_INT32);
 	H5Tinsert (triggerinfotable, "NanoSec", HOFFSET(TriggerInfo_t, nanosec), H5T_NATIVE_INT32);
-	FL_PacketTable triggerinfo_d(ReadoutGroup, "TriggerInfo", triggerinfotable, chunksize, dsp);
+	FL_PacketTable triggerinfo_d(ReadoutGroup, "TriggerInfo", triggerinfotable, readout_chunksize[0], dsp);
 	if(! triggerinfo_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table TriggerInfo.");
 		abort();

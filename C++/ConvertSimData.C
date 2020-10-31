@@ -29,10 +29,10 @@ using namespace std;
 
 // A program to convert raw data from a root file of JP1t to hdf5
 
-void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, int chunksize);
 void Convert_RunHeader_Tree(TTree* RunHeaderTree, hid_t outputfile, hid_t dsp, int chunksize);
-void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, int chunksize);
-void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, int chunksize);
+void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vector<int> readout_chunksize);
+void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, vector<int> simtriggerinfo_chunksize);
+void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vector<int> simtruth_chunksize);
 
 int main(int argc, char** argv)
 {
@@ -41,7 +41,10 @@ int main(int argc, char** argv)
 	program.add_argument("InputROOTfile");
 	program.add_argument("OutputH5File");
 	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
-	program.add_argument("-ch","--chunksize").help("chunksize of h5 file").default_value(16).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-hch","--runheader-chunksize").help("chunksize of Runeader table").default_value(1).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").default_value(vector<int>{16,128}).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-ich","--simtriggerinfo-chunksize").help("chunksize of {TruthList, PEList} table").default_value(vector<int>{16, 256}).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-uch","--simtruth-chunksize").help("chunksize of {SimTruth, PrimaryPartcle, DepositEergy, TrackList, StepPoint, SecondaryParticle} table").default_value(vector<int>{16,32,32,256,1024,1024}).action([](const std::string& value) { return std::stoi(value); });;
 
 	try {
 		program.parse_args(argc, argv);
@@ -55,7 +58,10 @@ int main(int argc, char** argv)
 	auto inputfilename = program.get<string>("InputROOTfile");
 	auto outputfilename = program.get<string>("OutputH5File");
 	int compression_level = program.get<int>("--compress");
-	int chunksize = program.get<int>("--chunksize");
+	int runheader_chunksize = program.get<int>("--runheader-chunksize");
+	vector<int> readout_chunksize = program.get<vector<int>>("--readout-chunksize");
+	vector<int> simtriggerinfo_chunksize = program.get<vector<int>>("--simtriggerinfo-chunksize");
+	vector<int> simtruth_chunksize = program.get<vector<int>>("--simtruth-chunksize");
 
 	// Load Dictionary
 	gSystem->Load("libJPSIMOUTPUT_rdict.pcm");
@@ -76,10 +82,10 @@ int main(int argc, char** argv)
 	err = H5Pset_deflate(dsp, compression_level);
 	if(err < 0) fprintf(stderr, "Error setting compression level.");
 
-	Convert_Readout_Tree(ReadoutTree, output, dsp, chunksize);
-	Convert_RunHeader_Tree(RunHeaderTree, output, dsp, chunksize);
-	Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, chunksize);
-	Convert_SimTruth_Tree(SimTruhTree, output, dsp, chunksize);
+	Convert_RunHeader_Tree(RunHeaderTree, output, dsp, runheader_chunksize);
+	Convert_Readout_Tree(ReadoutTree, output, dsp, readout_chunksize);
+	Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, simtruth_chunksize);
+	Convert_SimTruth_Tree(SimTruhTree, output, dsp, simtruth_chunksize);
 
 	err = H5Fclose(output);
 	if( err < 0 )
