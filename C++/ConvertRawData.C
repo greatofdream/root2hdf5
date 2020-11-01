@@ -28,7 +28,7 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 int main(int argc, char** argv)
 {
 	// Parsing Arguments
-	argparse::ArgumentParser program("H5Test");
+	argparse::ArgumentParser program("ConvertRawData");
 	program.add_argument("InputROOTfile");
 	program.add_argument("OutputH5File");
 	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
