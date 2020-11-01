@@ -71,7 +71,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vec
 
 	// Create truthlist Table
 	hid_t truthlisttable = H5Tcreate (H5T_COMPOUND, sizeof(SimTruth_t));
-	H5Tinsert (truthlisttable, "RunId", HOFFSET(SimTruth_t, RunId), H5T_NATIVE_INT32); 
+	H5Tinsert (truthlisttable, "RunNo", HOFFSET(SimTruth_t, RunId), H5T_NATIVE_INT32); 
 	H5Tinsert (truthlisttable, "SegmentId", HOFFSET(SimTruth_t, SegmentId), H5T_NATIVE_INT32); 
 	H5Tinsert (truthlisttable, "VertexId", HOFFSET(SimTruth_t, VertexId), H5T_NATIVE_INT32); 
 	H5Tinsert (truthlisttable, "VertexRadZ", HOFFSET(SimTruth_t, VertexRadZ), H5T_NATIVE_INT32); 
@@ -124,7 +124,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vec
 	vector<double> *dEList = nullptr;
 	SimTruthTree->SetBranchAddress("dEList",&dEList);
 	hid_t dEtable = H5Tcreate (H5T_COMPOUND, sizeof(DepositEnergy_t));
-	H5Tinsert (dEtable, "RunId", HOFFSET(DepositEnergy_t, RunId), H5T_NATIVE_INT32); 
+	H5Tinsert (dEtable, "RunNo", HOFFSET(DepositEnergy_t, RunId), H5T_NATIVE_INT32); 
 	H5Tinsert (dEtable, "SegmentId", HOFFSET(DepositEnergy_t, SegmentId), H5T_NATIVE_INT32); 
 	H5Tinsert (dEtable, "VertexId", HOFFSET(DepositEnergy_t, VertexId), H5T_NATIVE_INT32); 
 	H5Tinsert (dEtable, "DepositEnergy", HOFFSET(DepositEnergy_t, DepositEnergy), H5T_NATIVE_DOUBLE); 
@@ -136,7 +136,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vec
 
 	vector<JPSimTrack_t> *Track_origin = nullptr;
 	SimTruthTree->SetBranchAddress("trackList",&Track_origin);
-	TrackTransformer tracktransformer(outputfile, &simtruth_chunksize[3], dsp);
+	TrackTransformer tracktransformer(SimTruthGroup, &simtruth_chunksize[3], dsp);
 
 	// converting loop
 	char outputfilename[100];

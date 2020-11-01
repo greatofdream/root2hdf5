@@ -16,6 +16,7 @@
 #include "H5PacketTable.h"
 #include "TFile.h"
 #include "JPSimOutput.hh"
+#include "TransformTrack.h"
 
 using namespace std;
 
@@ -32,7 +33,7 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 	TruthList_t *TruthList= (TruthList_t*) malloc(sizeof(TruthList_t));
 	vector<JPSimTruthTree_t> *TruthList_origin = nullptr;
 	SimTriggerInfoTree->SetBranchStatus("*",0);
-	for(auto activeBranch : {"RunId", "SegmentId", "VertexId"}) SimTriggerInfoTree->SetBranchStatus(TString("truthList.")+TString(activeBranch), 1);
+	for(auto activeBranch : {"RunId", "SegmentId", "VertexId", "trackList"}) SimTriggerInfoTree->SetBranchStatus(TString("truthList.")+TString(activeBranch), 1);
 	SimTriggerInfoTree->SetBranchAddress("truthList",&TruthList_origin);
 	// define pelist data structure
 	struct PEList_t
@@ -58,7 +59,7 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 
 	// Create truthlist Table
 	hid_t truthlisttable = H5Tcreate (H5T_COMPOUND, sizeof(TruthList_t));
-	H5Tinsert (truthlisttable, "RunId", HOFFSET(TruthList_t, runno), H5T_NATIVE_INT32);
+	H5Tinsert (truthlisttable, "RunNo", HOFFSET(TruthList_t, runno), H5T_NATIVE_INT32);
 	H5Tinsert (truthlisttable, "SegmentId", HOFFSET(TruthList_t, segmentid), H5T_NATIVE_INT32);
 	H5Tinsert (truthlisttable, "VertexId", HOFFSET(TruthList_t, vertexid), H5T_NATIVE_INT32);
 	H5Tinsert (truthlisttable, "TriggerNo", HOFFSET(TruthList_t, triggerno), H5T_NATIVE_INT32);
@@ -73,8 +74,8 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 	H5Tinsert (pelisttable, "RunNo", HOFFSET(PEList_t, runno), H5T_NATIVE_INT32);
 	H5Tinsert (pelisttable, "TriggerNo", HOFFSET(PEList_t, triggerno), H5T_NATIVE_INT32);
 	H5Tinsert (pelisttable, "PMTId", sizeof(PEList_t) + HOFFSET(JPSimPE_t, PMTId), H5T_NATIVE_INT32);
-	H5Tinsert (pelisttable, "segmentId", sizeof(PEList_t) + HOFFSET(JPSimPE_t, segmentId), H5T_NATIVE_INT32);
-	H5Tinsert (pelisttable, "primaryParticleId", sizeof(PEList_t) + HOFFSET(JPSimPE_t, primaryParticleId), H5T_NATIVE_INT32);
+	H5Tinsert (pelisttable, "SegmentId", sizeof(PEList_t) + HOFFSET(JPSimPE_t, segmentId), H5T_NATIVE_INT32);
+	H5Tinsert (pelisttable, "PrimaryParticleId", sizeof(PEList_t) + HOFFSET(JPSimPE_t, primaryParticleId), H5T_NATIVE_INT32);
 	H5Tinsert (pelisttable, "photonX", sizeof(PEList_t) + HOFFSET(JPSimPE_t, photonX), H5T_NATIVE_DOUBLE);
 	H5Tinsert (pelisttable, "photonY", sizeof(PEList_t) + HOFFSET(JPSimPE_t, photonY), H5T_NATIVE_DOUBLE);
 	H5Tinsert (pelisttable, "photonZ", sizeof(PEList_t) + HOFFSET(JPSimPE_t, photonZ), H5T_NATIVE_DOUBLE);
@@ -95,6 +96,8 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 		abort();
 	}
 
+	TrackTransformer tracktransformer(SimTriggerInfoGroup, &simtriggerinfo_chunksize[2], dsp);
+
 	// converting loop
 	char outputfilename[100];
 	H5Fget_name(outputfile,outputfilename,100);
@@ -109,6 +112,7 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 		{
 			memcpy(TruthList, &truth, HOFFSET(TruthList_t, triggerno));
 			truthlist_d.AppendPacket( TruthList );
+			tracktransformer.LoopTrack(&truth.trackList, truth.RunId, truth.SegmentId, truth.VertexId);
 		}
 		for(auto pe : *PEList_origin) 
 		{

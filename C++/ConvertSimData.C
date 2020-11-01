@@ -84,7 +84,7 @@ int main(int argc, char** argv)
 
 	// Convert_RunHeader_Tree(RunHeaderTree, output, dsp, runheader_chunksize);
 	// Convert_Readout_Tree(ReadoutTree, output, dsp, readout_chunksize);
-	// Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, simtruth_chunksize);
+	Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, simtruth_chunksize);
 	Convert_SimTruth_Tree(SimTruhTree, output, dsp, simtruth_chunksize);
 
 	err = H5Fclose(output);
