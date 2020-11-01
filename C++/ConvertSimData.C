@@ -31,8 +31,8 @@ using namespace std;
 
 void Convert_RunHeader_Tree(TTree* RunHeaderTree, hid_t outputfile, hid_t dsp, int chunksize);
 void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vector<int> readout_chunksize);
-void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, vector<int> simtriggerinfo_chunksize);
-void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vector<int> simtruth_chunksize);
+void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, vector<int> simtriggerinfo_chunksize, bool SaveTrack);
+void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vector<int> simtruth_chunksize, bool SaveTrack);
 
 int main(int argc, char** argv)
 {
@@ -63,16 +63,18 @@ int main(int argc, char** argv)
 	vector<int> simtriggerinfo_chunksize = program.get<vector<int>>("--simtriggerinfo-chunksize");
 	vector<int> simtruth_chunksize = program.get<vector<int>>("--simtruth-chunksize");
 
+
 	// Load Dictionary
 	gSystem->Load("libJPSIMOUTPUT_rdict.pcm");
 
+
 	// Read Input file
 	TFile* ipt = new TFile(TString(inputfilename), "read");
-	TTree* ReadoutTree = nullptr, *RunHeaderTree = nullptr, *SimTriggerInfoTree = nullptr, *SimTruhTree = nullptr;
+	TTree* ReadoutTree = nullptr, *RunHeaderTree = nullptr, *SimTriggerInfoTree = nullptr, *SimTruthTree = nullptr;
 	ipt->GetObject("Readout",ReadoutTree);
 	ipt->GetObject("RunHeader",RunHeaderTree);
 	ipt->GetObject("SimTriggerInfo",SimTriggerInfoTree);
-	ipt->GetObject("SimTruth",SimTruhTree);
+	ipt->GetObject("SimTruth",SimTruthTree);
 	// Create output file
 	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 	if(output <0) { fprintf(stderr, "Couldn't create file.\n"); return 1; }
@@ -82,10 +84,41 @@ int main(int argc, char** argv)
 	err = H5Pset_deflate(dsp, compression_level);
 	if(err < 0) fprintf(stderr, "Error setting compression level.");
 
-	// Convert_RunHeader_Tree(RunHeaderTree, output, dsp, runheader_chunksize);
-	// Convert_Readout_Tree(ReadoutTree, output, dsp, readout_chunksize);
-	Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, simtruth_chunksize);
-	Convert_SimTruth_Tree(SimTruhTree, output, dsp, simtruth_chunksize);
+
+	// Decide if and where the track should be saved
+	SimTriggerInfoTree->SetBranchStatus("*",0);
+	SimTriggerInfoTree->SetBranchStatus("truthList", 1);
+	SimTriggerInfoTree->SetBranchStatus("truthList.trackList", 1);
+	vector<JPSimTruthTree_t>* TruthList_test = nullptr;
+	SimTriggerInfoTree->SetBranchAddress("truthList",&TruthList_test);
+	SimTriggerInfoTree->GetEntry(0);
+	auto truth_0 = TruthList_test->data();
+	auto track_0 = truth_0->trackList;
+	bool has_trigger_track = track_0.size()!=0;
+
+	vector<JPSimTrack_t>* TrackList_test = nullptr;
+	SimTruthTree->SetBranchStatus("*",0);
+	SimTruthTree->SetBranchStatus("trackList*", 1);
+	SimTruthTree->SetBranchAddress("trackList",&TrackList_test);
+	SimTruthTree->GetEntry(0);
+	bool has_verbose_track = TrackList_test->size()!=0;
+
+	bool SaveTriggerTrack, SaveTruthTrack;
+	if(has_trigger_track && has_verbose_track) {SaveTriggerTrack=false; SaveTruthTrack=true;}
+	else if((!has_trigger_track) && (!has_verbose_track))  {SaveTriggerTrack=false; SaveTruthTrack=false;}
+	else if(( has_trigger_track) && (!has_verbose_track))  {SaveTriggerTrack=true; SaveTruthTrack=false;}
+	else {cerr<<"Unknown Track Structure in root file!"<<endl; abort();}
+#ifdef DEBUG
+	cout<<"has_verbose_track="<<has_verbose_track<<", has_trigger_track="<<has_trigger_track<<endl;
+	cout<<"SaveTruthTrack="<<SaveTruthTrack<<", SaveTriggerTrack="<<SaveTriggerTrack<<endl;
+#endif
+
+
+	// Converting
+	Convert_RunHeader_Tree(RunHeaderTree, output, dsp, runheader_chunksize);
+	Convert_Readout_Tree(ReadoutTree, output, dsp, readout_chunksize);
+	Convert_SimTriggerInfo_Tree(SimTriggerInfoTree, output, dsp, simtruth_chunksize, SaveTriggerTrack);
+	Convert_SimTruth_Tree(SimTruthTree, output, dsp, simtruth_chunksize, SaveTruthTrack);
 
 	err = H5Fclose(output);
 	if( err < 0 )

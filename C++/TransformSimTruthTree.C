@@ -20,8 +20,10 @@
 
 using namespace std;
 
-void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vector<int> simtruth_chunksize)
+void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vector<int> simtruth_chunksize, bool SaveTrack)
 {
+	SimTruthTree->SetBranchStatus("*",1);
+	if(!SaveTrack) SimTruthTree->SetBranchStatus("trackList*", 0);
 	// Create SimTruth Group
 	hid_t SimTruthGroup = H5Gcreate1(outputfile, "/SimTruth",100);
 
@@ -136,7 +138,8 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vec
 
 	vector<JPSimTrack_t> *Track_origin = nullptr;
 	SimTruthTree->SetBranchAddress("trackList",&Track_origin);
-	TrackTransformer tracktransformer(SimTruthGroup, &simtruth_chunksize[3], dsp);
+	TrackTransformer *tracktransformer=nullptr;
+	if(SaveTrack) tracktransformer = new TrackTransformer(SimTruthGroup, &simtruth_chunksize[3], dsp);
 
 	// converting loop
 	char outputfilename[100];
@@ -159,7 +162,7 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vec
 			DepositEnergy->DepositEnergy = dE;
 			dElist_d.AppendPacket( DepositEnergy );
 		}
-		tracktransformer.LoopTrack(Track_origin, SimTruth->RunId, SimTruth->SegmentId, SimTruth->VertexId);
+		if(SaveTrack) tracktransformer->LoopTrack(Track_origin, SimTruth->RunId, SimTruth->SegmentId, SimTruth->VertexId);
 
 		if (ievt==0) cout<<"start processing ..."<<endl;
 		else if (ievt%1000==0) cout<<ievt<<" events converted"<<endl;
@@ -167,4 +170,5 @@ void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vec
 	free(SimTruth);
 	free(DepositEnergy);
 	free(PrimaryParticleList);
+	delete tracktransformer;
 }

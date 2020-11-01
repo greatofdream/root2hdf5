@@ -20,7 +20,7 @@
 
 using namespace std;
 
-void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, vector<int> simtriggerinfo_chunksize)
+void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, vector<int> simtriggerinfo_chunksize, bool SaveTrack)
 {
 	// define truthlist data structure
 	struct TruthList_t
@@ -33,7 +33,8 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 	TruthList_t *TruthList= (TruthList_t*) malloc(sizeof(TruthList_t));
 	vector<JPSimTruthTree_t> *TruthList_origin = nullptr;
 	SimTriggerInfoTree->SetBranchStatus("*",0);
-	for(auto activeBranch : {"RunId", "SegmentId", "VertexId", "trackList"}) SimTriggerInfoTree->SetBranchStatus(TString("truthList.")+TString(activeBranch), 1);
+	for(auto activeBranch : {"RunId", "SegmentId", "VertexId"}) SimTriggerInfoTree->SetBranchStatus(TString("truthList.")+TString(activeBranch), 1);
+	if(SaveTrack) SimTriggerInfoTree->SetBranchStatus("truthList.trackList", 1);
 	SimTriggerInfoTree->SetBranchAddress("truthList",&TruthList_origin);
 	// define pelist data structure
 	struct PEList_t
@@ -96,7 +97,8 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 		abort();
 	}
 
-	TrackTransformer tracktransformer(SimTriggerInfoGroup, &simtriggerinfo_chunksize[2], dsp);
+	TrackTransformer *tracktransformer=nullptr;
+	if(SaveTrack) tracktransformer = new TrackTransformer(SimTriggerInfoGroup, &simtriggerinfo_chunksize[2], dsp);
 
 	// converting loop
 	char outputfilename[100];
@@ -112,7 +114,7 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 		{
 			memcpy(TruthList, &truth, HOFFSET(TruthList_t, triggerno));
 			truthlist_d.AppendPacket( TruthList );
-			tracktransformer.LoopTrack(&truth.trackList, truth.RunId, truth.SegmentId, truth.VertexId);
+			if(SaveTrack) tracktransformer->LoopTrack(&truth.trackList, truth.RunId, truth.SegmentId, truth.VertexId);
 		}
 		for(auto pe : *PEList_origin) 
 		{
@@ -125,4 +127,5 @@ void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hi
 	}
 	free(PEList);
 	free(TruthList);
+	delete tracktransformer;
 }
