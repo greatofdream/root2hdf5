@@ -42,9 +42,9 @@ int main(int argc, char** argv)
 	program.add_argument("OutputH5File");
 	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
 	program.add_argument("-hch","--runheader-chunksize").help("chunksize of Runeader table").default_value(1).action([](const std::string& value) { return std::stoi(value); });;
-	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").default_value(vector<int>{16,128}).action([](const std::string& value) { return std::stoi(value); });;
-	program.add_argument("-ich","--simtriggerinfo-chunksize").help("chunksize of {TruthList, PEList} table").default_value(vector<int>{16, 256}).action([](const std::string& value) { return std::stoi(value); });;
-	program.add_argument("-uch","--simtruth-chunksize").help("chunksize of {SimTruth, PrimaryPartcle, DepositEergy, TrackList, StepPoint, SecondaryParticle} table").default_value(vector<int>{16,32,32,256,1024,1024}).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").nargs(2).default_value(vector<int>{16,128}).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-ich","--simtriggerinfo-chunksize").help("chunksize of {TruthList, PEList} table").nargs(2).default_value(vector<int>{16, 128}).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-uch","--simtruth-chunksize").help("chunksize of {SimTruth, PrimaryPartcle, DepositEergy, TrackList, StepPoint, SecondaryParticle} table").nargs(6).default_value(vector<int>{16,32,32,128,128,128}).action([](const std::string& value) { return std::stoi(value); });;
 
 	try {
 		program.parse_args(argc, argv);

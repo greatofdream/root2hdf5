@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 	program.add_argument("InputROOTfile");
 	program.add_argument("OutputH5File");
 	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
-	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").default_value(16).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").nargs(2).default_value(vector<int>{16,128}).action([](const std::string& value) { return std::stoi(value); });;
 
 	try {
 		program.parse_args(argc, argv);
@@ -47,6 +47,7 @@ int main(int argc, char** argv)
 	auto outputfilename = program.get<string>("OutputH5File");
 	int compression_level = program.get<int>("--compress");
 	vector<int> readout_chunksize = program.get<vector<int>>("--readout-chunksize");
+	cout<<readout_chunksize[0]<<" "<<readout_chunksize[1]<<endl;
 
 	// Read Input file
 	TFile* ipt = new TFile(TString(inputfilename), "read");
