@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 	program.add_argument("InputROOTfile");
 	program.add_argument("OutputH5File");
 	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
-	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").nargs(2).default_value(vector<int>{16,128}).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").nargs(2).default_value(vector<int>{16,16}).action([](const std::string& value) { return std::stoi(value); });;
 
 	try {
 		program.parse_args(argc, argv);
