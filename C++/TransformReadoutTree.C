@@ -97,7 +97,7 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 		for(int i=0;i<ChannelId->size();i++)
 		{
 			Readout->channelid = (*ChannelId)[i];
-			memcpy(Readout->waveform, Waveform->data()+i*WindowSize, sizeof(*Readout_t::waveform)*WindowSize);
+			for(int j=0;j<WindowSize;j++) Readout->waveform[j]=(*Waveform)[i*WindowSize+j];
 			waveform_d.AppendPacket( Readout );
 		}
 		triggerinfo_d.AppendPacket( TriggerInfo );
