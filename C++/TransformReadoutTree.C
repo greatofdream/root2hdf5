@@ -42,7 +42,7 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 	ReadoutTree->SetBranchAddress("RunNo",&TriggerInfo->runno);
 	ReadoutTree->SetBranchAddress("TriggerNo",&TriggerInfo->triggerno);
 	ReadoutTree->SetBranchAddress("TriggerType",&TriggerInfo->triggertype);
-	ReadoutTree->SetBranchAddress("DetectorID",&TriggerInfo->triggerno);
+	ReadoutTree->SetBranchAddress("DetectorID",&TriggerInfo->detectorid);
 	ReadoutTree->SetBranchAddress("Sec",&TriggerInfo->sec);
 	ReadoutTree->SetBranchAddress("NanoSec",&TriggerInfo->nanosec);
 	
