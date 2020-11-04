@@ -17,15 +17,22 @@ using namespace std;
 
 void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vector<int> readout_chunksize)
 {
+	// Create Readout Group
+	hid_t ReadoutGroup = H5Gcreate1(outputfile, "/Readout",100);
+	uint64_t nevt= ReadoutTree->GetEntries();
+	if(nevt==0) return;
 	// Read Waveform and ChannelId
-	vector<uint32_t>* Waveform = nullptr;
+	vector<uint32_t>* Waveform_origin = nullptr;
 	vector<uint32_t>* ChannelId = nullptr;
 	ReadoutTree->SetBranchAddress("ChannelId",&ChannelId);
-	ReadoutTree->SetBranchAddress("Waveform",&Waveform);
+	ReadoutTree->SetBranchAddress("Waveform",&Waveform_origin);
 
 	// determine WindowSize
 	ReadoutTree->GetEntry(0);
-	int WindowSize = Waveform->size()/ChannelId->size();
+	for(int i=1;ChannelId->size()==0 || i<nevt;i++) ReadoutTree->GetEntry(i);
+	int WindowSize;
+	if(ChannelId->size()==0) return;
+	else WindowSize = Waveform_origin->size()/ChannelId->size();
 
 	// define outputfile data structure
 	struct TriggerInfo_t {
@@ -48,23 +55,21 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 	
 	// define outputfile data structure
 	// caution: struct alignment. sizeof(Readout_t) != HOFFSET(Readout_t, waveform)
-	struct Readout_t {
+	struct Waveform_t {
 		int32_t triggerno;
 		int32_t channelid;
 		int16_t waveform[];
 	};
-	size_t readout_size = sizeof(Readout_t)+sizeof(*Readout_t::waveform)*WindowSize;
-	Readout_t* Readout= (Readout_t*) malloc(readout_size);
+	size_t waveform_size = sizeof(Waveform_t)+sizeof(*Waveform_t::waveform)*WindowSize;
+	Waveform_t* Waveform= (Waveform_t*) malloc(waveform_size);
 
-	// Create Readout Group
-	hid_t ReadoutGroup = H5Gcreate1(outputfile, "/Readout",100);
 	// Create outputfile Table
-	hid_t waveformtable = H5Tcreate (H5T_COMPOUND, readout_size);
-	H5Tinsert (waveformtable, "TriggerNo", HOFFSET(Readout_t, triggerno), H5T_NATIVE_INT32);
-	H5Tinsert (waveformtable, "ChannelID", HOFFSET(Readout_t, channelid), H5T_NATIVE_INT32);
+	hid_t waveformtable = H5Tcreate (H5T_COMPOUND, waveform_size);
+	H5Tinsert (waveformtable, "TriggerNo", HOFFSET(Waveform_t, triggerno), H5T_NATIVE_INT32);
+	H5Tinsert (waveformtable, "ChannelID", HOFFSET(Waveform_t, channelid), H5T_NATIVE_INT32);
 	hsize_t dim[1]; dim[0] = WindowSize;
 	hid_t waveform_t = H5Tarray_create(H5T_NATIVE_INT16, 1, dim);
-	H5Tinsert (waveformtable, "Waveform", HOFFSET(Readout_t, waveform), waveform_t);
+	H5Tinsert (waveformtable, "Waveform", HOFFSET(Waveform_t, waveform), waveform_t);
 	FL_PacketTable waveform_d(ReadoutGroup, "Waveform", waveformtable, readout_chunksize[1], dsp);
 	if(! waveform_d.IsValid()) {
 		fprintf(stderr, "Unable to create packet table Waveform.");
@@ -88,22 +93,21 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 	char outputfilename[100];
 	H5Fget_name(outputfile,outputfilename,100);
 	cout<<"Converting Readout Tree of "<<ReadoutTree->GetCurrentFile()->GetName()<<" to "<<outputfilename<<endl;
-	uint64_t nevt= ReadoutTree->GetEntries();
 	cout<<nevt<<" events to be processed"<<endl;
 
 	for (unsigned int ievt=0; ievt<nevt; ievt++) {
 		ReadoutTree->GetEntry(ievt);
-		Readout->triggerno = TriggerInfo->triggerno;
+		Waveform->triggerno = TriggerInfo->triggerno;
 		for(int i=0;i<ChannelId->size();i++)
 		{
-			Readout->channelid = (*ChannelId)[i];
-			for(int j=0;j<WindowSize;j++) Readout->waveform[j]=(*Waveform)[i*WindowSize+j];
-			waveform_d.AppendPacket( Readout );
+			Waveform->channelid = (*ChannelId)[i];
+			for(int j=0;j<WindowSize;j++) Waveform->waveform[j]=(*Waveform_origin)[i*WindowSize+j];
+			waveform_d.AppendPacket( Waveform );
 		}
 		triggerinfo_d.AppendPacket( TriggerInfo );
 
 		if (ievt==0) cout<<"start processing ..."<<endl;
 		else if (ievt%1000==0) cout<<ievt<<" events converted"<<endl;
 	}
-	free(Readout);
+	free(Waveform);
 }

@@ -47,7 +47,6 @@ int main(int argc, char** argv)
 	auto outputfilename = program.get<string>("OutputH5File");
 	int compression_level = program.get<int>("--compress");
 	vector<int> readout_chunksize = program.get<vector<int>>("--readout-chunksize");
-	cout<<readout_chunksize[0]<<" "<<readout_chunksize[1]<<endl;
 
 	// Read Input file
 	TFile* ipt = new TFile(TString(inputfilename), "read");
