@@ -7,16 +7,11 @@
 ================================================================*/
 
 
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
-#include <cstdint>
 #include <iostream>
 #include "TTree.h"
 #include <vector>
 #include "H5PacketTable.h"
 #include "TFile.h"
-
-const uint64_t buffersize = 1024*1024*1024*1 /*Bytes*/;
 
 using namespace std;
 
@@ -48,18 +43,15 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 		int32_t sec;
 		int32_t nanosec;
 	};
-	uint64_t TriggerInfoBuffSize = buffersize/sizeof(TriggerInfo_t);
-	if(TriggerInfoBuffSize<1) TriggerInfoBuffSize=1;
-	TriggerInfo_t* TriggerInfo_begin_pointer= (TriggerInfo_t*) malloc(sizeof(TriggerInfo_t) * TriggerInfoBuffSize);
-	TriggerInfo_t* TriggerInfo_origin= (TriggerInfo_t*) malloc(sizeof(TriggerInfo_t));
+	TriggerInfo_t* TriggerInfo= (TriggerInfo_t*) malloc(sizeof(TriggerInfo_t));
 
 	// directly read root data into struct.
-	ReadoutTree->SetBranchAddress("RunNo",&TriggerInfo_origin->runno);
-	ReadoutTree->SetBranchAddress("TriggerNo",&TriggerInfo_origin->triggerno);
-	ReadoutTree->SetBranchAddress("TriggerType",&TriggerInfo_origin->triggertype);
-	ReadoutTree->SetBranchAddress("DetectorID",&TriggerInfo_origin->detectorid);
-	ReadoutTree->SetBranchAddress("Sec",&TriggerInfo_origin->sec);
-	ReadoutTree->SetBranchAddress("NanoSec",&TriggerInfo_origin->nanosec);
+	ReadoutTree->SetBranchAddress("RunNo",&TriggerInfo->runno);
+	ReadoutTree->SetBranchAddress("TriggerNo",&TriggerInfo->triggerno);
+	ReadoutTree->SetBranchAddress("TriggerType",&TriggerInfo->triggertype);
+	ReadoutTree->SetBranchAddress("DetectorID",&TriggerInfo->detectorid);
+	ReadoutTree->SetBranchAddress("Sec",&TriggerInfo->sec);
+	ReadoutTree->SetBranchAddress("NanoSec",&TriggerInfo->nanosec);
 	
 	// define outputfile data structure
 	// caution: struct alignment. sizeof(Readout_t) != HOFFSET(Readout_t, waveform)
@@ -69,10 +61,7 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 		int16_t waveform[];
 	};
 	size_t waveform_size = sizeof(Waveform_t)+sizeof(*Waveform_t::waveform)*WindowSize;
-	uint64_t WaveformBuffSize = buffersize/waveform_size;
-	if(WaveformBuffSize<1) WaveformBuffSize=1;
-	Waveform_t* Waveform_begin_pointer= (Waveform_t*) malloc(waveform_size * WaveformBuffSize);
-	cout<<"WaveformBuffSize="<<WaveformBuffSize<<endl;
+	Waveform_t* Waveform= (Waveform_t*) malloc(waveform_size);
 
 	// Create outputfile Table
 	hid_t waveformtable = H5Tcreate (H5T_COMPOUND, waveform_size);
@@ -106,46 +95,19 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 	cout<<"Converting Readout Tree of "<<ReadoutTree->GetCurrentFile()->GetName()<<" to "<<outputfilename<<endl;
 	cout<<nevt<<" events to be processed"<<endl;
 
-	int TriggerInfo_count = 0, Waveform_count = 0;
-	Waveform_t * Waveform = Waveform_begin_pointer;
-	TriggerInfo_t* TriggerInfo = TriggerInfo_begin_pointer;
 	for (unsigned int ievt=0; ievt<nevt; ievt++) {
-		// filling TriggerInfo
 		ReadoutTree->GetEntry(ievt);
-		memcpy(TriggerInfo, TriggerInfo_origin, sizeof(TriggerInfo_t));
-		TriggerInfo_count++;
-		TriggerInfo++;
-		if(TriggerInfo_count==TriggerInfoBuffSize) 
+		Waveform->triggerno = TriggerInfo->triggerno;
+		for(int i=0;i<ChannelId->size();i++)
 		{
-			triggerinfo_d.AppendPackets(TriggerInfoBuffSize, TriggerInfo_begin_pointer);
-			TriggerInfo = TriggerInfo_begin_pointer;
-			TriggerInfo_count=0;
+			Waveform->channelid = (*ChannelId)[i];
+			for(int j=0;j<WindowSize;j++) Waveform->waveform[j]=(*Waveform_origin)[i*WindowSize+j];
+			waveform_d.AppendPacket( Waveform );
 		}
-
-	 	// filling Waveform
-	 	if(ChannelId->size()!=0)
-	 	for(int i=0;i<ChannelId->size();i++)
-	 	{
-	 		Waveform->triggerno = TriggerInfo_origin->triggerno;
-	 		Waveform->channelid = (*ChannelId)[i];
-	 		for(int j=0;j<WindowSize;j++) Waveform->waveform[j]=(*Waveform_origin)[i*WindowSize+j];
-	 		Waveform_count++;
-	 		Waveform = (Waveform_t*) ((uint64_t)Waveform + waveform_size);
-	 		if(Waveform_count==WaveformBuffSize) 
-	 		{
-	 			waveform_d.AppendPackets(WaveformBuffSize, Waveform_begin_pointer);
-	 			Waveform = Waveform_begin_pointer;
-	 			Waveform_count=0;
-	 		}
-	 	}
+		triggerinfo_d.AppendPacket( TriggerInfo );
 
 		if (ievt==0) cout<<"start processing ..."<<endl;
 		else if (ievt%1000==0) cout<<ievt<<" events converted"<<endl;
 	}
-	if(TriggerInfo_count!=0) triggerinfo_d.AppendPackets(TriggerInfo_count, TriggerInfo_begin_pointer);
-	if(Waveform_count!=0) waveform_d.AppendPackets(Waveform_count, Waveform_begin_pointer);
-
-	free(TriggerInfo_begin_pointer);
-	free(TriggerInfo_origin);
-	free(Waveform_begin_pointer);
+	free(Waveform);
 }
