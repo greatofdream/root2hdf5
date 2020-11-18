@@ -66,6 +66,7 @@ int main(int argc, char** argv)
 
 	// Load Dictionary
 	gSystem->Load("libJPSIMOUTPUT_rdict.pcm");
+	gSystem->Load("libJPSIMOUTPUT.so");
 
 
 	// Read Input file
@@ -90,11 +91,17 @@ int main(int argc, char** argv)
 	SimTriggerInfoTree->SetBranchStatus("truthList", 1);
 	SimTriggerInfoTree->SetBranchStatus("truthList.trackList", 1);
 	vector<JPSimTruthTree_t>* TruthList_test = nullptr;
+	bool has_trigger_track;
 	SimTriggerInfoTree->SetBranchAddress("truthList",&TruthList_test);
-	SimTriggerInfoTree->GetEntry(0);
-	auto truth_0 = TruthList_test->data();
-	auto track_0 = truth_0->trackList;
-	bool has_trigger_track = track_0.size()!=0;
+	for(int entry=0;entry<SimTriggerInfoTree->GetEntries();entry++)
+	{
+		SimTriggerInfoTree->GetEntry(entry);
+		if(TruthList_test->size()==0) continue;
+		auto truth_0 = TruthList_test->data();
+		auto track_0 = truth_0->trackList;
+		has_trigger_track = track_0.size()!=0;
+		break;
+	}
 
 	vector<JPSimTrack_t>* TrackList_test = nullptr;
 	SimTruthTree->SetBranchStatus("*",0);

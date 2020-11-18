@@ -48,3 +48,5 @@ target_link_libraries(ConvertSimData ${ROOT_LIBRARIES} ${HDF5_LIBRARIES}
     TransformSimTriggerInfoTree TransformSimTruthTree)
 configure_file("${JSAPSYS}/DataType/lib/libJPSIMOUTPUT_rdict.pcm"
     ${PROJECT_BINARY_DIR}/ COPYONLY)
+configure_file("${JSAPSYS}/DataType/lib/libJPSIMOUTPUT.so"
+    ${PROJECT_BINARY_DIR}/ COPYONLY)
