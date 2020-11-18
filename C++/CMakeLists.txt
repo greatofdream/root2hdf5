@@ -13,18 +13,26 @@ include_directories(${ROOT_INCLUDE_DIR})
 find_package(HDF5 COMPONENTS CXX HL)
 include_directories(${HDF5_INCLUDE_DIRS})
 
+set(JSAPSYS $ENV{JSAPSYS})
+include_directories("${JSAPSYS}/DataType/include")
+
+
 add_library(TransformReadoutTree SHARED TransformReadoutTree.C)
 target_link_libraries(TransformReadoutTree ${ROOT_LIBRARIES} ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES})
+
 add_library(TransformRunHeaderTree SHARED TransformRunHeaderTree.C)
 target_link_libraries(TransformRunHeaderTree ${ROOT_LIBRARIES} ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES})
+
 add_library(TransformTrack SHARED ./TransformTrack.C)
 target_link_libraries(TransformTrack ${ROOT_LIBRARIES}
     ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
+
 add_library(TransformSimTriggerInfoTree SHARED TransformSimTriggerInfoTree.C)
 target_link_libraries(TransformSimTriggerInfoTree ${ROOT_LIBRARIES}
     ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
+
 add_library(TransformSimTruthTree SHARED TransformSimTruthTree.C)
 target_link_libraries(TransformSimTruthTree TransformTrack ${ROOT_LIBRARIES}
     ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
@@ -34,8 +42,6 @@ target_link_libraries(ConvertRawData TransformReadoutTree ${ROOT_LIBRARIES}
     ${HDF5_LIBRARIES} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
 
 add_executable(ConvertSimData ConvertSimData.C)
-set(JSAPSYS $ENV{JSAPSYS})
-target_include_directories(ConvertSimData PRIVATE "${JSAPSYS}/DataType/include")
 target_link_libraries(ConvertSimData ${ROOT_LIBRARIES} ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES} "${JSAPSYS}/DataType/lib/libJPSIMOUTPUT.so"
     TransformReadoutTree TransformRunHeaderTree
