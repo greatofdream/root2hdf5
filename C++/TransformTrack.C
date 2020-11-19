@@ -92,15 +92,19 @@ void TrackTransformer::LoopTrack(vector<JPSimTrack_t>* TrackList_origin, int32_t
 	{
 		memcpy(Track->trackinfo, &track, HOFFSET(JPSimTrack_t, StepPoints));
 		track_d->AppendPacket( Track );
+		int stepid=0;
 		for(auto step : track.StepPoints ) 
 		{
+			secondaryparticle->TrackId = StepPointHeader->TrackId = track.nTrackId;
 			memcpy(StepPointHeader->steppointinfo, &step, HOFFSET(JPSimStepPoint_t, nSecondaryPdgId));
 			steppoint_d->AppendPacket( StepPointHeader );
 			for(auto secondarypdgid : step.nSecondaryPdgId ) 
 			{
+				secondaryparticle->StepId = stepid;
 				secondaryparticle->nSecondaryPdgId = secondarypdgid;
 				secondaryparticle_d->AppendPacket( secondaryparticle );
 			}
+			stepid++;
 		}
 	}
 }
