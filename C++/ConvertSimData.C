@@ -91,7 +91,7 @@ int main(int argc, char** argv)
 	SimTriggerInfoTree->SetBranchStatus("truthList", 1);
 	SimTriggerInfoTree->SetBranchStatus("truthList.trackList", 1);
 	vector<JPSimTruthTree_t>* TruthList_test = nullptr;
-	bool has_trigger_track;
+	bool has_trigger_track=false;
 	SimTriggerInfoTree->SetBranchAddress("truthList",&TruthList_test);
 	for(int entry=0;entry<SimTriggerInfoTree->GetEntries();entry++)
 	{
@@ -112,6 +112,7 @@ int main(int argc, char** argv)
 
 	bool SaveTriggerTrack, SaveTruthTrack;
 	if(has_trigger_track && has_verbose_track) {SaveTriggerTrack=false; SaveTruthTrack=true;}
+	else if(SimTriggerInfoTree->GetEntries()==0 && has_verbose_track) {SaveTriggerTrack=false; SaveTruthTrack=true;} // in case No Trigger, has_trigger_track=false
 	else if((!has_trigger_track) && (!has_verbose_track))  {SaveTriggerTrack=false; SaveTruthTrack=false;}
 	else if(( has_trigger_track) && (!has_verbose_track))  {SaveTriggerTrack=true; SaveTruthTrack=false;}
 	else {cerr<<"Unknown Track Structure in root file!"<<endl; abort();}
