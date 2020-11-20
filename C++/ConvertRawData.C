@@ -7,6 +7,8 @@
  ================================================================*/
 
 
+#include "H5Ppublic.h"
+#include "H5Zpublic.h"
 #include "argparse.hpp"
 #include <cstddef>
 #include <iostream>
@@ -17,6 +19,8 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "H5PacketTable.h"
+
+#define ZSTD_FILTER 32015
 
 using namespace std;
 
@@ -32,6 +36,7 @@ int main(int argc, char** argv)
 	program.add_argument("InputROOTfile");
 	program.add_argument("OutputH5File");
 	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-zstd","--zstandard").help("use zstandard as compression filter").default_value(false).implicit_value(true);
 	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").nargs(2).default_value(vector<int>{16,16}).action([](const std::string& value) { return std::stoi(value); });;
 
 	try {
@@ -46,6 +51,7 @@ int main(int argc, char** argv)
 	auto inputfilename = program.get<string>("InputROOTfile");
 	auto outputfilename = program.get<string>("OutputH5File");
 	int compression_level = program.get<int>("--compress");
+	bool use_zstd = program.get<bool>("-zstd");
 	vector<int> readout_chunksize = program.get<vector<int>>("--readout-chunksize");
 
 	// Read Input file
@@ -53,12 +59,28 @@ int main(int argc, char** argv)
 	TTree* ReadoutTree = nullptr;
 	ipt->GetObject("Readout",ReadoutTree);
 	// Create output file
-	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	hid_t fapl_id = H5Pcreate (H5P_FILE_ACCESS);
+	H5Pset_cache(fapl_id,0,500/*slots*/,1024*1024*1000/*Bytes*/,1.0/*only write once*/);
+	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
 	if(output <0) { fprintf(stderr, "Couldn't create file.\n"); return 1; }
 	// Set H5 compression level
 	herr_t err;
 	hid_t dsp = H5Pcreate(H5P_DATASET_CREATE);
-	err = H5Pset_deflate(dsp, compression_level);
+	if(use_zstd)
+	{
+		if(H5Zfilter_avail(ZSTD_FILTER))
+		{
+			unsigned int compress[1];
+			compress[0] = compression_level;
+			err = H5Pset_filter(dsp,32015/*zstd*/,0b00,1,compress);
+		}
+		else
+		{
+			cerr<<"No zstd support! Change to gzip."<<endl;
+			use_zstd=false;
+		}
+	}
+	if(!use_zstd) err = H5Pset_deflate(dsp, compression_level);
 	if(err < 0) fprintf(stderr, "Error setting compression level.");
 
 	Convert_Readout_Tree(ReadoutTree, output, dsp, readout_chunksize);
