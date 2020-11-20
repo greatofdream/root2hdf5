@@ -60,7 +60,7 @@ int main(int argc, char** argv)
 	ipt->GetObject("Readout",ReadoutTree);
 	// Create output file
 	hid_t fapl_id = H5Pcreate (H5P_FILE_ACCESS);
-	H5Pset_cache(fapl_id,0,500/*slots*/,1024*1024*1000/*Bytes*/,1.0/*only write once*/);
+	H5Pset_cache(fapl_id,0,500/*slots*/,(1029*2)*readout_chunksize[1]*2/*Bytes*/,1.0/*only write once*/);
 	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
 	if(output <0) { fprintf(stderr, "Couldn't create file.\n"); return 1; }
 	// Set H5 compression level
