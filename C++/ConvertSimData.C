@@ -7,9 +7,6 @@
  ================================================================*/
 
 
-#include "argparse.hpp"
-#include <bits/stdint-intn.h>
-#include <bits/stdint-uintn.h>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -23,6 +20,11 @@
 #include "TSystem.h"
 #include "JPSimOutput.hh"
 #include "H5PacketTable.h"
+#include "H5Ppublic.h"
+#include "H5Zpublic.h"
+#include "argparse.hpp"
+
+#define ZSTD_FILTER 32015
 
 using namespace std;
 
@@ -41,6 +43,7 @@ int main(int argc, char** argv)
 	program.add_argument("InputROOTfile");
 	program.add_argument("OutputH5File");
 	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
+	program.add_argument("-zstd","--zstandard").help("use zstandard as compression filter").default_value(false).implicit_value(true);
 	program.add_argument("-hch","--runheader-chunksize").help("chunksize of Runeader table").default_value(1).action([](const std::string& value) { return std::stoi(value); });;
 	program.add_argument("-rch","--readout-chunksize").help("chunksize of {TriggerInfo, Waveform} table").nargs(2).default_value(vector<int>{16,16}).action([](const std::string& value) { return std::stoi(value); });;
 	program.add_argument("-ich","--simtriggerinfo-chunksize").help("chunksize of {TruthList, PEList} table").nargs(2).default_value(vector<int>{16, 32}).action([](const std::string& value) { return std::stoi(value); });;
@@ -62,6 +65,7 @@ int main(int argc, char** argv)
 	vector<int> readout_chunksize = program.get<vector<int>>("--readout-chunksize");
 	vector<int> simtriggerinfo_chunksize = program.get<vector<int>>("--simtriggerinfo-chunksize");
 	vector<int> simtruth_chunksize = program.get<vector<int>>("--simtruth-chunksize");
+	bool use_zstd = program.get<bool>("-zstd");
 
 
 	// Load Dictionary
@@ -77,14 +81,29 @@ int main(int argc, char** argv)
 	ipt->GetObject("SimTriggerInfo",SimTriggerInfoTree);
 	ipt->GetObject("SimTruth",SimTruthTree);
 	// Create output file
-	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	hid_t fapl_id = H5Pcreate (H5P_FILE_ACCESS);
+	H5Pset_cache(fapl_id,0,500/*slots*/,1024*1024*128/*Bytes*/,1.0/*only write once*/);
+	hid_t output = H5Fcreate(outputfilename.data(), H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
 	if(output <0) { fprintf(stderr, "Couldn't create file.\n"); return 1; }
 	// Set H5 compression level
 	herr_t err;
 	hid_t dsp = H5Pcreate(H5P_DATASET_CREATE);
-	err = H5Pset_deflate(dsp, compression_level);
+	if(use_zstd)
+	{
+		if(H5Zfilter_avail(ZSTD_FILTER))
+		{
+			unsigned int compress[1];
+			compress[0] = compression_level;
+			err = H5Pset_filter(dsp,32015/*zstd*/,0b00,1,compress);
+		}
+		else
+		{
+			cerr<<"No zstd support! Change to gzip."<<endl;
+			use_zstd=false;
+		}
+	}
+	if(!use_zstd) err = H5Pset_deflate(dsp, compression_level);
 	if(err < 0) fprintf(stderr, "Error setting compression level.");
-
 
 	// Decide if and where the track should be saved
 	SimTriggerInfoTree->SetBranchStatus("*",0);

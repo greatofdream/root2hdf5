@@ -29,7 +29,7 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 
 	// determine WindowSize
 	ReadoutTree->GetEntry(0);
-	for(int i=1;ChannelId->size()==0 || i<nevt;i++) ReadoutTree->GetEntry(i);
+	for(int i=1;ChannelId->size()==0 || i==nevt;i++) ReadoutTree->GetEntry(i);
 	int WindowSize;
 	if(ChannelId->size()==0) return;
 	else WindowSize = Waveform_origin->size()/ChannelId->size();
