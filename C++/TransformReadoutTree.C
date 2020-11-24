@@ -28,8 +28,8 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 	ReadoutTree->SetBranchAddress("Waveform",&Waveform_origin);
 
 	// determine WindowSize
-	ReadoutTree->GetEntry(0);
-	for(int i=1;ChannelId->size()==0 || i==nevt;i++) ReadoutTree->GetEntry(i);
+	if(nevt>1) ReadoutTree->GetEntry(1); else ReadoutTree->GetEntry(0);
+	for(int i=2;ChannelId->size()==0 && i < nevt - 1;i++) ReadoutTree->GetEntry(i);
 	int WindowSize;
 	if(ChannelId->size()==0) return;
 	else WindowSize = Waveform_origin->size()/ChannelId->size();
@@ -95,19 +95,23 @@ void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vecto
 	cout<<"Converting Readout Tree of "<<ReadoutTree->GetCurrentFile()->GetName()<<" to "<<outputfilename<<endl;
 	cout<<nevt<<" events to be processed"<<endl;
 
+	cout<<"start processing ..."<<endl;
 	for (unsigned int ievt=0; ievt<nevt; ievt++) {
 		ReadoutTree->GetEntry(ievt);
-		Waveform->triggerno = TriggerInfo->triggerno;
-		for(int i=0;i<ChannelId->size();i++)
+		if(Waveform_origin->size() == WindowSize * ChannelId->size())
 		{
-			Waveform->channelid = (*ChannelId)[i];
-			for(int j=0;j<WindowSize;j++) Waveform->waveform[j]=(*Waveform_origin)[i*WindowSize+j];
-			waveform_d.AppendPacket( Waveform );
+			Waveform->triggerno = TriggerInfo->triggerno;
+			for(int i=0;i<ChannelId->size();i++)
+			{
+				Waveform->channelid = (*ChannelId)[i];
+				for(int j=0;j<WindowSize;j++) Waveform->waveform[j]=(*Waveform_origin)[i*WindowSize+j];
+				waveform_d.AppendPacket( Waveform );
+			}
+			triggerinfo_d.AppendPacket( TriggerInfo );
 		}
-		triggerinfo_d.AppendPacket( TriggerInfo );
+		else cerr<<"Entry "<<ievt<<" has inconsistent WindowSize="<<Waveform_origin->size()/ChannelId->size()<<"!"<<endl;
 
-		if (ievt==0) cout<<"start processing ..."<<endl;
-		else if (ievt%1000==0) cout<<ievt<<" events converted"<<endl;
+		if (ievt!=0 && ievt%1000==0) cout<<ievt<<" events converted"<<endl;
 	}
 	free(Waveform);
 }
