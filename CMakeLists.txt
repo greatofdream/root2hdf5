@@ -3,7 +3,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 project(JPDataConverter)
 set(CMAKE_CXX_STANDARD 17) # required for argparse
 
-set(CMAKE_BUILD_TYPE Reslease)
+set(CMAKE_BUILD_TYPE Release)
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb")
 
 find_package(ROOT)
@@ -46,6 +46,11 @@ target_link_libraries(ConvertSimData ${ROOT_LIBRARIES} ${HDF5_LIBRARIES}
     ${HDF5_HL_LIBRARIES} "${JSAPSYS}/DataType/lib/libJPSIMOUTPUT.so"
     TransformReadoutTree TransformRunHeaderTree
     TransformSimTriggerInfoTree TransformSimTruthTree)
+
+add_executable(ConvertGH1 GhostHunter1.C TransformPE.C)
+target_link_libraries(ConvertGH1 TransformReadoutTree ${ROOT_LIBRARIES}
+    ${HDF5_LIBRARIES} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
+
 configure_file("${JSAPSYS}/DataType/lib/libJPSIMOUTPUT_rdict.pcm"
     ${PROJECT_BINARY_DIR}/ COPYONLY)
 configure_file("${JSAPSYS}/DataType/lib/libJPSIMOUTPUT.so"
