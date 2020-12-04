@@ -7,9 +7,6 @@
  ================================================================*/
 
 
-#include "H5Ppublic.h"
-#include "H5Zpublic.h"
-#include "argparse.hpp"
 #include <cstddef>
 #include <iostream>
 #include <string>
@@ -19,6 +16,9 @@
 #include "TFile.h"
 #include "TTree.h"
 #include "H5PacketTable.h"
+#include "H5Ppublic.h"
+#include "H5Zpublic.h"
+#include "argparse.hpp"
 
 #define ZSTD_FILTER 32015
 
