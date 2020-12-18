@@ -14,7 +14,7 @@ find_package(HDF5 COMPONENTS CXX HL)
 include_directories(${HDF5_INCLUDE_DIRS})
 
 set(JSAPSYS $ENV{JSAPSYS})
-include_directories("${JSAPSYS}/DataType/include")
+include_directories("${JSAPSYS}/Simulation/DataType/include")
 
 
 add_library(TransformReadoutTree SHARED TransformReadoutTree.C)
@@ -43,7 +43,7 @@ target_link_libraries(ConvertRawData TransformReadoutTree ${ROOT_LIBRARIES}
 
 add_executable(ConvertSimData ConvertSimData.C)
 target_link_libraries(ConvertSimData ${ROOT_LIBRARIES} ${HDF5_LIBRARIES}
-    ${HDF5_HL_LIBRARIES} "${JSAPSYS}/DataType/lib/libJPSIMOUTPUT.so"
+	${HDF5_HL_LIBRARIES} "${JSAPSYS}/Simulation/DataType/lib/libJPSIMOUTPUT.so"
     TransformReadoutTree TransformRunHeaderTree
     TransformSimTriggerInfoTree TransformSimTruthTree)
 
@@ -51,7 +51,7 @@ add_executable(ConvertGH1 GhostHunter1.C TransformPE.C)
 target_link_libraries(ConvertGH1 TransformReadoutTree ${ROOT_LIBRARIES}
     ${HDF5_LIBRARIES} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES})
 
-configure_file("${JSAPSYS}/DataType/lib/libJPSIMOUTPUT_rdict.pcm"
+configure_file("${JSAPSYS}/Simulation/DataType/lib/libJPSIMOUTPUT_rdict.pcm"
     ${PROJECT_BINARY_DIR}/ COPYONLY)
-configure_file("${JSAPSYS}/DataType/lib/libJPSIMOUTPUT.so"
+configure_file("${JSAPSYS}/Simulation/DataType/lib/libJPSIMOUTPUT.so"
     ${PROJECT_BINARY_DIR}/ COPYONLY)
