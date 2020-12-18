@@ -21,7 +21,7 @@
 2. 使用C++17标准安装JSAP，安装目录设置为$JSAPSYS
 3. 克隆·仓库并编译软件
    `git clone https://gitlab.airelinux.org/wuyy/root2hdf5.git`
-   `cd root2hdf5/C++`
+   `cd root2hdf5`
    `mkdir build`
    `cd build`
    `cmake ..`
