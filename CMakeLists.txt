@@ -52,3 +52,9 @@ target_link_libraries(ConvertGH1 TransformReadoutTree ${ROOT_LIBRARIES}
 
 configure_file("${JSAPSYS}/Simulation/DataType/lib/libJPSIMOUTPUT_rdict.pcm" ${PROJECT_BINARY_DIR}/ COPYONLY)
 configure_file("${JSAPSYS}/Simulation/DataType/lib/libJPSIMOUTPUT.so" ${PROJECT_BINARY_DIR}/ COPYONLY)
+install(TARGETS ConvertRawData ConvertSimData RUNTIME DESTINATION bin)
+install(TARGETS TransformReadoutTree TransformRunHeaderTree 
+	TransformTrack TransformSimTruthTree TransformSimTriggerInfoTree RUNTIME
+	DESTINATION lib)
+install(FILE libJPSIMOUTPUT.so RUNTIME DESTINATION bin)
+install(FILE libJPSIMOUTPUT_rdict.pcm RUNTIME DESTINATION bin)
