@@ -16,6 +16,7 @@
 #include <vector>
 #include "TString.h"
 #include "TFile.h"
+#include "TChain.h"
 #include "TTree.h"
 #include "TSystem.h"
 #include "JPSimOutput.hh"
@@ -23,25 +24,33 @@
 #include "H5Ppublic.h"
 #include "H5Zpublic.h"
 #include "argparse.hpp"
+// #include <boost/program_options.hpp>
+// #include <boost/program_options/options_description.hpp>
 
 #define ZSTD_FILTER 32015
 
 using namespace std;
-
+// namespace po = boost::program_options;
 
 // A program to convert raw data from a root file of JP1t to hdf5
+
 
 void Convert_RunHeader_Tree(TTree* RunHeaderTree, hid_t outputfile, hid_t dsp, int chunksize);
 void Convert_Readout_Tree(TTree* ReadoutTree, hid_t outputfile, hid_t dsp, vector<int> readout_chunksize);
 void Convert_SimTriggerInfo_Tree(TTree* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, vector<int> simtriggerinfo_chunksize, bool SaveTrack);
 void Convert_SimTruth_Tree(TTree* SimTruthTree, hid_t outputfile, hid_t dsp, vector<int> simtruth_chunksize, bool SaveTrack);
+void Convert_RunHeader_Tree(TChain* RunHeaderTree, hid_t outputfile, hid_t dsp, int chunksize);
+void Convert_Readout_Tree(TChain* ReadoutTree, hid_t outputfile, hid_t dsp, vector<int> readout_chunksize);
+void Convert_SimTriggerInfo_Tree(TChain* SimTriggerInfoTree, hid_t outputfile, hid_t dsp, vector<int> simtriggerinfo_chunksize, bool SaveTrack);
+void Convert_SimTruth_Tree(TChain* SimTruthTree, hid_t outputfile, hid_t dsp, vector<int> simtruth_chunksize, bool SaveTrack);
 
 int main(int argc, char** argv)
 {
 	// Parsing Arguments
 	argparse::ArgumentParser program("ConvertSimData");
-	program.add_argument("InputROOTfile");
-	program.add_argument("OutputH5File");
+	//po::options_description program("jinping_cvt")
+	program.add_argument( "InputROOTfile");//.nargs('+');
+	program.add_argument( "OutputH5File");
 	program.add_argument("-co","--compress").help("compression level").default_value(4).action([](const std::string& value) { return std::stoi(value); });;
 	program.add_argument("-zstd","--zstandard").help("use zstandard as compression filter").default_value(false).implicit_value(true);
 	program.add_argument("-hch","--runheader-chunksize").help("chunksize of Runeader table").default_value(1).action([](const std::string& value) { return std::stoi(value); });;
@@ -58,6 +67,7 @@ int main(int argc, char** argv)
 		cout << err.what() << endl;
 		return 2;
 	}
+	cout<< "read args"<<endl;
 	auto inputfilename = program.get<string>("InputROOTfile");
 	auto outputfilename = program.get<string>("OutputH5File");
 	int compression_level = program.get<int>("--compress");
@@ -74,12 +84,29 @@ int main(int argc, char** argv)
 
 
 	// Read Input file
-	TFile* ipt = new TFile(TString(inputfilename), "read");
-	TTree* ReadoutTree = nullptr, *RunHeaderTree = nullptr, *SimTriggerInfoTree = nullptr, *SimTruthTree = nullptr;
-	ipt->GetObject("Readout",ReadoutTree);
-	ipt->GetObject("RunHeader",RunHeaderTree);
-	ipt->GetObject("SimTriggerInfo",SimTriggerInfoTree);
-	ipt->GetObject("SimTruth",SimTruthTree);
+	// TFile* ipt = new TFile(TString(inputfilename), "read");
+	// TTree* ReadoutTree = nullptr, *RunHeaderTree = nullptr, *SimTriggerInfoTree = nullptr, *SimTruthTree = nullptr;
+	TChain* ReadoutTree = new TChain(TString("Readout"));
+	TChain* RunHeaderTree = new TChain(TString("RunHeader"));
+	TChain* SimTriggerInfoTree = new TChain(TString("SimTriggerInfo"));
+	TChain* SimTruthTree = new TChain(TString("SimTruth"));
+	cout<<"construct TChain"<<endl;
+	// ipt->GetObject("Readout",ReadoutTree);
+	// ipt->GetObject("RunHeader",RunHeaderTree);
+	// ipt->GetObject("SimTriggerInfo",SimTriggerInfoTree);
+	// ipt->GetObject("SimTruth",SimTruthTree);
+	// for(int i=0;i<inputfilename.size();i++){
+	// 	ReadoutTree->Add(TString(inputfilename[i]));
+	// 	RunHeaderTree->Add(TString(inputfilename[i]));
+	// 	SimTriggerInfoTree->Add(TString(inputfilename[i]));
+	// 	SimTruthTree->Add(TString(inputfilename[i]));
+	// }
+	ReadoutTree->Add(TString(inputfilename));
+	RunHeaderTree->Add(TString(inputfilename));
+	SimTriggerInfoTree->Add(TString(inputfilename));
+	SimTruthTree->Add(TString(inputfilename));
+	cout<<"add files to TChain"<<endl;
+	cout<<"SimTruth entries:"<<SimTruthTree->GetEntries()<<endl;
 	// Create output file
 	hid_t fapl_id = H5Pcreate (H5P_FILE_ACCESS);
 	H5Pset_cache(fapl_id,0,500/*slots*/,1024*1024*128/*Bytes*/,1.0/*only write once*/);
@@ -152,7 +179,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Failed to close file.\n");
 	cout<<"done!"<<endl;
 
-	ipt->Close();
+	//ipt->Close();
 
 	return 0;
 }
