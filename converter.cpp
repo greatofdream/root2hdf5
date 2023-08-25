@@ -14,9 +14,9 @@ void Converter::Init_HEADER_Type(){
 	H5Tinsert(headtype, "nrunsk", HOFFSET(Head_t, nrunsk), H5T_NATIVE_INT32);
 	H5Tinsert (headtype, "nsubsk", HOFFSET(Head_t, nsubsk), H5T_NATIVE_INT32);
 	H5Tinsert (headtype, "nevsk", HOFFSET(Head_t, nevsk), H5T_NATIVE_INT32);
-	H5Tinsert (headtype, "ndaysk", HOFFSET(Head_t, ndaysk), H5Tarray_create(H5T_NATIVE_INT32, 1, &dim[0]));
-	H5Tinsert (headtype, "ntimsk", HOFFSET(Head_t, ntimsk), H5Tarray_create(H5T_NATIVE_INT32, 1, &dim[1]));
-	H5Tinsert (headtype, "nt48sk", HOFFSET(Head_t, nt48sk), H5Tarray_create(H5T_NATIVE_INT32, 1, &dim[0]));
+	H5Tinsert (headtype, "ndaysk", HOFFSET(Head_t, ndaysk), H5Tarray_create(H5T_NATIVE_INT32, 1, &dim[2]));
+	H5Tinsert (headtype, "ntimsk", HOFFSET(Head_t, ntimsk), H5Tarray_create(H5T_NATIVE_INT32, 1, &dim[3]));
+	H5Tinsert (headtype, "nt48sk", HOFFSET(Head_t, nt48sk), H5Tarray_create(H5T_NATIVE_INT32, 1, &dim[2]));
 	H5Tinsert (headtype, "mdrnsk", HOFFSET(Head_t, mdrnsk), H5T_NATIVE_INT32);
 	H5Tinsert (headtype, "idtgsk", HOFFSET(Head_t, idtgsk), H5T_NATIVE_INT32);
 	H5Tinsert (headtype, "ifevsk", HOFFSET(Head_t, ifevsk), H5T_NATIVE_INT32);
@@ -26,7 +26,7 @@ void Converter::Init_HEADER_Type(){
 	H5Tinsert (headtype, "nusgps", HOFFSET(Head_t, nusgps), H5T_NATIVE_INT32);
 	H5Tinsert (headtype, "ltctrg", HOFFSET(Head_t, ltctrg), H5T_NATIVE_INT32);
 	H5Tinsert (headtype, "ltcbip", HOFFSET(Head_t, ltcbip), H5T_NATIVE_INT32);
-	H5Tinsert (headtype, "ltdct0", HOFFSET(Head_t, itdct0), H5Tarray_create(H5T_NATIVE_INT32, 1, &dim[1]));
+	H5Tinsert (headtype, "ltdct0", HOFFSET(Head_t, itdct0), H5Tarray_create(H5T_NATIVE_INT32, 1, &dim[3]));
 	H5Tinsert (headtype, "iffscc", HOFFSET(Head_t, iffscc), H5T_NATIVE_INT32);
 	H5Tinsert (headtype, "icalva", HOFFSET(Head_t, icalva), H5T_NATIVE_INT32);
 	H5Tinsert (headtype, "sk_geometry", HOFFSET(Head_t, sk_geometry), H5T_NATIVE_INT32);
@@ -88,6 +88,73 @@ void Converter::Init_TQREAL_Type(){
 	// 	fprintf(stderr, "Unable to create packet table tqreal for OD.");
 	// 	abort();
 	// }
+}
+void Converter::Init_LOWE_Type(){
+	lowetype = H5Tcreate(H5T_COMPOUND, sizeof(lowe_t));
+	const char* member_names[] = {
+		"nrunsk", "nsubsk", "nevsk", "ntrigsk",
+		"bsvertex", "bsresult", "bsdir", "bsgood", "bsdirks", "bseffhit", "bsenergy", "bsn50", "bscossun",
+		"clvertex", "clresult", "cldir", "clgoodness", "cldirks", "cleffhit", "clenergy", "cln50", "clcossun",
+		"latmnum", "latmh", "lmx24", "ltimediff", "lnsratio", "lsdir",
+		"spaevnum", "spaloglike", "sparesq", "spadt", "spadll", "spadlt", "spamuyn", "spamugdn",
+		"posmc", "dirmc", "pabsmc", "energymc"
+		};
+	size_t member_offsets[] = {
+		HOFFSET(RunNo_t, nrunsk), HOFFSET(RunNo_t, nsubsk), HOFFSET(RunNo_t, nevsk), HOFFSET(RunNo_t, ntrigsk),
+		HOFFSET(lowe_t, bsvertex), HOFFSET(lowe_t, bsresult), HOFFSET(lowe_t, bsdir), HOFFSET(lowe_t, bsgood), HOFFSET(lowe_t, bsdirks), HOFFSET(lowe_t, bseffhit), HOFFSET(lowe_t, bsenergy), HOFFSET(lowe_t, bsn50), HOFFSET(lowe_t, bscossun),
+		HOFFSET(lowe_t, clvertex), HOFFSET(lowe_t, clresult), HOFFSET(lowe_t, cldir), HOFFSET(lowe_t, clgoodness), HOFFSET(lowe_t, cldirks), HOFFSET(lowe_t, cleffhit), HOFFSET(lowe_t, clenergy), HOFFSET(lowe_t, cln50), HOFFSET(lowe_t, clcossun),
+		HOFFSET(lowe_t, latmnum), HOFFSET(lowe_t, latmh), HOFFSET(lowe_t, lmx24), HOFFSET(lowe_t, ltimediff), HOFFSET(lowe_t, lnsratio), HOFFSET(lowe_t, lsdir),
+		HOFFSET(lowe_t, spaevnum), HOFFSET(lowe_t, spaloglike), HOFFSET(lowe_t, sparesq), HOFFSET(lowe_t, spadt), HOFFSET(lowe_t, spadll), HOFFSET(lowe_t, spadlt), HOFFSET(lowe_t, spamuyn), HOFFSET(lowe_t, spamugdn),
+		HOFFSET(lowe_t, posmc), HOFFSET(lowe_t, dirmc), HOFFSET(lowe_t, pabsmc), HOFFSET(lowe_t, energymc)
+		};
+    hid_t member_types[] = {
+		H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_INT, H5T_NATIVE_INT,
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[3]),
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[5]),
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[2]),
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[2]),
+		H5T_NATIVE_FLOAT,
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[11]),
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_INT,
+		H5T_NATIVE_FLOAT,
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[3]),
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[3]),
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[2]),
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_FLOAT,
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[11]),
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_INT,
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_INT,
+		H5T_NATIVE_INT,
+		H5T_NATIVE_INT,
+		H5T_NATIVE_DOUBLE,
+		H5T_NATIVE_FLOAT,
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[2]),
+		H5T_NATIVE_INT,
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_FLOAT,
+		H5T_NATIVE_INT,
+		H5T_NATIVE_FLOAT,
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[2]),
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[5]),
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[1]),
+		H5Tarray_create(H5T_NATIVE_FLOAT, 1, &dim[1]),
+		};
+    int num_members = 40;
+	for (int i = 0; i < num_members; ++i) {
+        H5Tinsert(lowetype, member_names[i], member_offsets[i], member_types[i]);
+    }
+	lowe_d = H5PTcreate(output, "LOWE", lowetype, 16, dsp);
+	if(H5PTis_valid(lowe_d)<0) {
+		fprintf(stderr, "Unable to create packet table tqmeta for ID. err: " + H5PTis_valid(lowe_d));
+		abort();
+	}
 }
 void Converter::Convert_HEADER(Header* HEAD){
 	// runno
@@ -152,9 +219,47 @@ void Converter::Convert_TQREAL(TQReal* TQREAL){
 	h5_tqmeta.nIflagNot7 = nIflagNot7;
 	h5_tqmeta.it0xsk = TQREAL->it0xsk;
 	H5PTappend(tqmeta_d, 1, &h5_tqmeta);
-
-
 }
 // void Converter::Convert_TQREAL(TQAReal* TQAREAL){
 	
 // }
+void Converter::Convert_LOWE(LoweInfo* LOWE){
+	h5_lowe.runno = h5_runno;
+	for(int i=0; i<4; i++) h5_lowe.bsvertex[i] = LOWE->bsvertex[i];
+	for(int i=0; i<6; i++) h5_lowe.bsresult[i] = LOWE->bsresult[i];
+	for(int i=0; i<3; i++) h5_lowe.bsdir[i] = LOWE->bsdir[i];
+	for(int i=0; i<3; i++) h5_lowe.bsgood[i] = LOWE->bsgood[i];
+	h5_lowe.bsdirks = LOWE->bsdirks;
+	for(int i=0; i<12; i++) h5_lowe.bseffhit[i] = LOWE->bseffhit[i];
+	h5_lowe.bsenergy = LOWE->bsenergy;
+	h5_lowe.bsn50 = LOWE->bsn50;
+	h5_lowe.bscossun = LOWE->bscossun;
+	for(int i=0; i<4; i++) h5_lowe.clvertex[i] = LOWE->clvertex[i];
+	for(int i=0; i<4; i++) h5_lowe.clresult[i] = LOWE->clresult[i];
+	for(int i=0; i<3; i++) h5_lowe.cldir[i] = LOWE->cldir[i];
+	h5_lowe.clgoodness = LOWE->clgoodness;
+	h5_lowe.cldirks = LOWE->cldirks;
+	for(int i=0; i<12; i++) h5_lowe.cleffhit[i] = LOWE->cleffhit[i];
+	h5_lowe.clenergy = LOWE->clenergy;
+	h5_lowe.cln50 = LOWE->cln50;
+	h5_lowe.clcossun = LOWE->clcossun;
+	h5_lowe.latmnum = LOWE->latmnum;
+	h5_lowe.latmh = LOWE->latmh;
+	h5_lowe.lmx24 = LOWE->lmx24;
+	h5_lowe.ltimediff = LOWE->ltimediff;
+	h5_lowe.lnsratio = LOWE->lnsratio;
+	for(int i=0; i<3; i++) h5_lowe.lsdir[i] = LOWE->lsdir[i];
+	h5_lowe.spaevnum = LOWE->spaevnum;
+	h5_lowe.spaloglike = LOWE->spaloglike;
+	h5_lowe.sparesq = LOWE->sparesq;
+	h5_lowe.spadt = LOWE->spadt;
+	h5_lowe.spadll = LOWE->spadll;
+	h5_lowe.spadlt = LOWE->spadlt;
+	h5_lowe.spamuyn = LOWE->spamuyn;
+	h5_lowe.spamugdn = LOWE->spamugdn;
+	for(int i=0; i<3; i++) h5_lowe.posmc[i] = LOWE->posmc[i];
+	for(int i=0; i<2; i++) for(int j=0; j<3; j++) h5_lowe.dirmc[i*3+j] = LOWE->dirmc[i][j];
+	for(int i=0; i<2; i++) h5_lowe.pabsmc[i] = LOWE->pabsmc[i];
+	for(int i=0; i<2; i++) h5_lowe.energymc[i] = LOWE->energymc[i];		
+	H5PTappend(lowe_d, 1, &h5_lowe);
+}
